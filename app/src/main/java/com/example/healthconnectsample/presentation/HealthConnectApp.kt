@@ -64,6 +64,7 @@ fun HealthConnectApp(healthConnectManager: HealthConnectManager) {
 //                            Screen.ExerciseSessions.route -> Screen.ExerciseSessions.titleId
 //                            Screen.SleepSessions.route -> Screen.SleepSessions.titleId
 //                            Screen.InputReadings.route -> Screen.InputReadings.titleId
+                            Screen.WelcomeScreen.route -> Screen.WelcomeScreen.titleId
                             Screen.DifferentialChanges.route -> Screen.DifferentialChanges.titleId
                             else -> R.string.app_name
                         }

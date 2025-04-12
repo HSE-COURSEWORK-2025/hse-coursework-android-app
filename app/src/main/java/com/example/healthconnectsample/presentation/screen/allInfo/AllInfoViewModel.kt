@@ -32,13 +32,43 @@ import kotlinx.coroutines.launch
 import java.io.IOException
 import java.util.UUID
 
+
+import androidx.health.connect.client.records.DistanceRecord
+import androidx.health.connect.client.records.ExerciseSessionRecord
+import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.SpeedRecord
+import androidx.health.connect.client.records.StepsRecord
+import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
+import androidx.health.connect.client.records.WeightRecord
+import androidx.health.connect.client.records.BloodPressureRecord
+import androidx.health.connect.client.records.BodyTemperatureRecord
+import androidx.health.connect.client.records.HydrationRecord
+import androidx.health.connect.client.records.BodyFatRecord
+import androidx.health.connect.client.records.BoneMassRecord
+import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
+import androidx.health.connect.client.records.BasalMetabolicRateRecord
+
+
 class SleepSessionViewModel(private val healthConnectManager: HealthConnectManager) :
     ViewModel() {
-
-    val permissions = setOf(
-        HealthPermission.getReadPermission(SleepSessionRecord::class),
-        HealthPermission.getWritePermission(SleepSessionRecord::class)
+    private val changesDataTypes = setOf(
+        ExerciseSessionRecord::class,
+        StepsRecord::class,
+        SpeedRecord::class,
+        DistanceRecord::class,
+        TotalCaloriesBurnedRecord::class,
+        HeartRateRecord::class,
+        SleepSessionRecord::class,
+        WeightRecord::class,
+        BloodPressureRecord::class,
+        BodyTemperatureRecord::class,
+        HydrationRecord::class,
+        BodyFatRecord::class,
+        BoneMassRecord::class,
+        ActiveCaloriesBurnedRecord::class,
+        BasalMetabolicRateRecord::class
     )
+    val permissions = changesDataTypes.map { HealthPermission.getReadPermission(it) }.toSet()
 
     var permissionsGranted = mutableStateOf(false)
         private set
@@ -60,10 +90,11 @@ class SleepSessionViewModel(private val healthConnectManager: HealthConnectManag
                 sessionsList.value = healthConnectManager.readSleepSessions()
 
                 heartRateList.value = healthConnectManager.readHearsRate()
-
+                permissionsGranted.value = healthConnectManager.hasAllPermissions(permissions)
             }
         }
     }
+
 
     fun generateSleepData() {
         viewModelScope.launch {

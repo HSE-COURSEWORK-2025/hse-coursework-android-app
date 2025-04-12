@@ -47,34 +47,32 @@ import com.example.healthconnectsample.presentation.component.InstalledMessage
 import com.example.healthconnectsample.presentation.component.NotInstalledMessage
 import com.example.healthconnectsample.presentation.component.NotSupportedMessage
 import com.example.healthconnectsample.presentation.theme.HealthConnectTheme
+import androidx.compose.material.Button
+import androidx.compose.material.Text
 
 /**
  * Welcome screen shown when the app is first launched.
  */
+
+
 @Composable
 fun WelcomeScreen(
     healthConnectAvailability: Int,
     onResumeAvailabilityCheck: () -> Unit,
+    permissionsGranted: Boolean,
+    onRequestPermissions: () -> Unit,
     lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
 ) {
     val currentOnAvailabilityCheck by rememberUpdatedState(onResumeAvailabilityCheck)
 
-    // Add a listener to re-check whether Health Connect has been installed each time the Welcome
-    // screen is resumed: This ensures that if the user has been redirected to the Play store and
-    // followed the onboarding flow, then when the app is resumed, instead of showing the message
-    // to ask the user to install Health Connect, the app recognises that Health Connect is now
-    // available and shows the appropriate welcome.
+    // Добавляем наблюдение за жизненным циклом, чтобы выполнить проверку при возобновлении экрана
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 currentOnAvailabilityCheck()
             }
         }
-
-        // Add the observer to the lifecycle
         lifecycleOwner.lifecycle.addObserver(observer)
-
-        // When the effect leaves the Composition, remove the observer
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
@@ -98,10 +96,21 @@ fun WelcomeScreen(
             color = MaterialTheme.colors.onBackground
         )
         Spacer(modifier = Modifier.height(32.dp))
+
         when (healthConnectAvailability) {
             SDK_AVAILABLE -> InstalledMessage()
             SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> NotInstalledMessage()
             SDK_UNAVAILABLE -> NotSupportedMessage()
+        }
+
+        // Если разрешения еще не получены, отображаем кнопку для их запроса
+        if (!permissionsGranted) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = { onRequestPermissions() }
+            ) {
+                Text(text = stringResource(R.string.permissions_button_label))
+            }
         }
     }
 }
@@ -112,7 +121,9 @@ fun InstalledMessagePreview() {
     HealthConnectTheme {
         WelcomeScreen(
             healthConnectAvailability = SDK_AVAILABLE,
-            onResumeAvailabilityCheck = {}
+            onResumeAvailabilityCheck = {},
+            permissionsGranted = true,
+            onRequestPermissions = {}
         )
     }
 }
@@ -123,7 +134,9 @@ fun NotInstalledMessagePreview() {
     HealthConnectTheme {
         WelcomeScreen(
             healthConnectAvailability = SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED,
-            onResumeAvailabilityCheck = {}
+            onResumeAvailabilityCheck = {},
+            permissionsGranted = false,
+            onRequestPermissions = {}
         )
     }
 }
@@ -134,7 +147,9 @@ fun NotSupportedMessagePreview() {
     HealthConnectTheme {
         WelcomeScreen(
             healthConnectAvailability = SDK_UNAVAILABLE,
-            onResumeAvailabilityCheck = {}
+            onResumeAvailabilityCheck = {},
+            permissionsGranted = false,
+            onRequestPermissions = {}
         )
     }
 }

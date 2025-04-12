@@ -17,6 +17,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- Разрешения на работу с Health Connect -->
+    <!-- Существующие разрешения -->
     <uses-permission android:name="android.permission.health.READ_HEART_RATE"/>
     <uses-permission android:name="android.permission.health.WRITE_HEART_RATE"/>
     <uses-permission android:name="android.permission.health.READ_STEPS"/>
@@ -34,9 +35,25 @@
     <uses-permission android:name="android.permission.health.READ_WEIGHT"/>
     <uses-permission android:name="android.permission.health.WRITE_WEIGHT"/>
     <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND" />
-    <uses-permission android:name="android.permission.CAMERA" />
-    <!-- Разрешение для использования камеры (необходимо для сканирования QR-кода) -->
 
+    <!-- Дополнительные разрешения для дополнительных типов данных -->
+    <uses-permission android:name="android.permission.health.READ_BLOOD_PRESSURE"/>
+    <uses-permission android:name="android.permission.health.WRITE_BLOOD_PRESSURE"/>
+    <uses-permission android:name="android.permission.health.READ_BODY_TEMPERATURE"/>
+    <uses-permission android:name="android.permission.health.WRITE_BODY_TEMPERATURE"/>
+    <uses-permission android:name="android.permission.health.READ_HYDRATION"/>
+    <uses-permission android:name="android.permission.health.WRITE_HYDRATION"/>
+    <uses-permission android:name="android.permission.health.READ_BODY_FAT"/>
+    <uses-permission android:name="android.permission.health.WRITE_BODY_FAT"/>
+    <uses-permission android:name="android.permission.health.READ_BONE_MASS"/>
+    <uses-permission android:name="android.permission.health.WRITE_BONE_MASS"/>
+    <uses-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED"/>
+    <uses-permission android:name="android.permission.health.WRITE_ACTIVE_CALORIES_BURNED"/>
+    <uses-permission android:name="android.permission.health.READ_BASAL_METABOLIC_RATE"/>
+    <uses-permission android:name="android.permission.health.WRITE_BASAL_METABOLIC_RATE"/>
+
+    <!-- Разрешение для использования камеры (например, для сканирования QR-кода) -->
+    <uses-permission android:name="android.permission.CAMERA" />
 
     <application
         android:allowBackup="true"
@@ -47,8 +64,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.HealthConnect">
 
-        <!-- Регистрация активности сканера QR-кода -->
-
+        <!-- Регистрация активности приложения -->
         <activity
             android:name="com.example.healthconnectsample.presentation.MainActivity"
             android:exported="true"
@@ -58,17 +74,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!--
-                The app needs to handle this intent and display an appropriate privacy policy
-                explaining how the user's data will be used and handled.
-                This intent is sent to the app when the user clicks on the "privacy policy" link
-                in the Health Connect permissions dialog.
-            -->
+            <!-- Обработка интента для показа политики конфиденциальности -->
             <intent-filter>
                 <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
             </intent-filter>
 
-            <!-- Permission handling for Android 14 -->
+            <!-- Permission handling для Android 14 -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW_PERMISSION_USAGE"/>
                 <category android:name="android.intent.category.HEALTH_PERMISSIONS"/>
@@ -76,17 +87,13 @@
         </activity>
 
         <activity android:name="com.example.healthconnectsample.presentation.screen.QrCodeScannerActivity" />
-<!--        <activity android:name=".presentation.screen.QrCodeScannerActivity" />-->
+        <!-- <activity android:name=".presentation.screen.QrCodeScannerActivity" /> -->
     </application>
 
     <queries>
         <package android:name="com.google.android.apps.healthdata" />
 
-        <!--
-             This is required such that the app can query and resolve packages that have written
-             Health Connect data, and obtain their friendly App Name and Icon to show for data
-             attribution in the app
-        -->
+        <!-- Позволяет приложению получать информацию об установленных приложениях, использующих Health Connect -->
         <intent>
             <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
         </intent>

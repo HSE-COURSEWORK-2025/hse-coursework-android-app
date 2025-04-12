@@ -25,9 +25,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.health.connect.client.changes.Change
 import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
+import androidx.health.connect.client.records.BasalMetabolicRateRecord
+import androidx.health.connect.client.records.BloodPressureRecord
+import androidx.health.connect.client.records.BodyFatRecord
+import androidx.health.connect.client.records.BodyTemperatureRecord
+import androidx.health.connect.client.records.BoneMassRecord
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.HydrationRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.SpeedRecord
 import androidx.health.connect.client.records.StepsRecord
@@ -52,7 +59,14 @@ class DifferentialChangesViewModel(private val healthConnectManager: HealthConne
         TotalCaloriesBurnedRecord::class,
         HeartRateRecord::class,
         SleepSessionRecord::class,
-        WeightRecord::class
+        WeightRecord::class,
+        BloodPressureRecord::class,
+        BodyTemperatureRecord::class,
+        HydrationRecord::class,
+        BodyFatRecord::class,
+        BoneMassRecord::class,
+        ActiveCaloriesBurnedRecord::class,
+        BasalMetabolicRateRecord::class
     )
 
     val permissions = changesDataTypes.map { HealthPermission.getReadPermission(it) }.toSet()

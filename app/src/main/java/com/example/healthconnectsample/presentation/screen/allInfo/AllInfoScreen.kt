@@ -31,7 +31,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
+import androidx.health.connect.client.records.BasalMetabolicRateRecord
+import androidx.health.connect.client.records.BloodPressureRecord
+import androidx.health.connect.client.records.BodyFatRecord
+import androidx.health.connect.client.records.BodyTemperatureRecord
+import androidx.health.connect.client.records.BoneMassRecord
+import androidx.health.connect.client.records.DistanceRecord
+import androidx.health.connect.client.records.ExerciseSessionRecord
+import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.HydrationRecord
 import androidx.health.connect.client.records.SleepSessionRecord
+import androidx.health.connect.client.records.SpeedRecord
+import androidx.health.connect.client.records.StepsRecord
+import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
+import androidx.health.connect.client.records.WeightRecord
 import com.example.healthconnectsample.R
 import com.example.healthconnectsample.data.SleepSessionData
 import com.example.healthconnectsample.presentation.theme.HealthConnectTheme
@@ -79,6 +94,25 @@ fun AllInfoSessionScreen(
         }
     }
 
+    val changesDataTypes = setOf(
+        ExerciseSessionRecord::class,
+        StepsRecord::class,
+        SpeedRecord::class,
+        DistanceRecord::class,
+        TotalCaloriesBurnedRecord::class,
+        HeartRateRecord::class,
+        SleepSessionRecord::class,
+        WeightRecord::class,
+        BloodPressureRecord::class,
+        BodyTemperatureRecord::class,
+        HydrationRecord::class,
+        BodyFatRecord::class,
+        BoneMassRecord::class,
+        ActiveCaloriesBurnedRecord::class,
+        BasalMetabolicRateRecord::class
+    )
+    val permissions2 = changesDataTypes.map { HealthPermission.getReadPermission(it) }.toSet()
+
     if (uiState != SleepSessionViewModel.UiState.Uninitialized) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -88,7 +122,7 @@ fun AllInfoSessionScreen(
             if (!permissionsGranted) {
                 item {
                     Button(
-                        onClick = { onPermissionsLaunch(permissions) }
+                        onClick = { onPermissionsLaunch(permissions2) }
                     ) {
                         Text(text = stringResource(R.string.permissions_button_label))
                     }
@@ -98,7 +132,8 @@ fun AllInfoSessionScreen(
                     Text(
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center,
-                        text = "test")
+                        text = "test"
+                    )
                 }
 
 
@@ -112,11 +147,13 @@ fun AllInfoSessionScreen(
                     Text(
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center,
-                        text = "lastDay: $lastDay")
+                        text = "lastDay: $lastDay"
+                    )
                     Text(
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center,
-                        text = "firstDay: $firstDay")
+                        text = "firstDay: $firstDay"
+                    )
                 }
 
 
@@ -129,10 +166,12 @@ fun AllInfoSessionScreen(
 
                 }
 
-                item { Text(
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center,
-                    text = "heart rate")
+                item {
+                    Text(
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center,
+                        text = "heart rate"
+                    )
 
                 }
 
@@ -142,7 +181,8 @@ fun AllInfoSessionScreen(
                     Text(
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center,
-                        text = "$startTime $data")
+                        text = "$startTime $data"
+                    )
                 }
 
             }
@@ -203,9 +243,9 @@ fun SleepSessionScreenPreview() {
                     uid = "123",
                     startTime = start2.toInstant(),
                     value = ""
-                    )
                 )
             )
+        )
 
     }
 }
