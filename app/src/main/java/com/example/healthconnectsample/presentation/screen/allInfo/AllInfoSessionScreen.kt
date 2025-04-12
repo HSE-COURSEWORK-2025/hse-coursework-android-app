@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.example.healthconnectsample.presentation.screen.sleepsession
+package com.example.healthconnectsample.presentation.screen.allInfo
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
@@ -40,7 +40,6 @@ import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 
-import androidx.health.connect.client.records.HeartRateRecord
 import com.example.healthconnectsample.data.HeartRateData
 
 /**

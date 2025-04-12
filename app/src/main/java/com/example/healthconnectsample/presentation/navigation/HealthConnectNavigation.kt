@@ -25,16 +25,14 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.healthconnectsample.data.HealthConnectManager
-import com.example.healthconnectsample.data.HeartRateData
 import com.example.healthconnectsample.presentation.screen.SettingsScreen
 import com.example.healthconnectsample.presentation.screen.changes.DifferentialChangesScreen
 import com.example.healthconnectsample.presentation.screen.changes.DifferentialChangesViewModel
 import com.example.healthconnectsample.presentation.screen.changes.DifferentialChangesViewModelFactory
-import com.example.healthconnectsample.presentation.screen.sleepsession.AllInfoSessionScreen
-import com.example.healthconnectsample.presentation.screen.sleepsession.SleepSessionViewModel
-import com.example.healthconnectsample.presentation.screen.sleepsession.SleepSessionViewModelFactory
+import com.example.healthconnectsample.presentation.screen.allInfo.AllInfoSessionScreen
+import com.example.healthconnectsample.presentation.screen.allInfo.SleepSessionViewModel
+import com.example.healthconnectsample.presentation.screen.allInfo.SleepSessionViewModelFactory
 import com.example.healthconnectsample.showExceptionSnackbar
-import kotlinx.coroutines.launch
 
 /**
  * Provides the navigation in the app.
@@ -47,139 +45,11 @@ fun HealthConnectNavigation(
 ) {
     val scope = rememberCoroutineScope()
     NavHost(navController = navController, startDestination = Screen.WelcomeScreen.route) {
-        val availability by healthConnectManager.availability
 
         composable(Screen.SettingsScreen.route){
             SettingsScreen()
         }
 
-//        composable(Screen.WelcomeScreen.route) {
-//            WelcomeScreen(
-//                healthConnectAvailability = availability,
-//                onResumeAvailabilityCheck = {
-//                    healthConnectManager.checkAvailability()
-//                }
-//            )
-//        }
-//        composable(
-//            route = Screen.PrivacyPolicy.route,
-//            deepLinks = listOf(
-//                navDeepLink {
-//                    action = "androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE"
-//                }
-//            )
-//        ) {
-//            PrivacyPolicyScreen()
-//        }
-
-//        composable(Screen.ExerciseSessions.route) {
-//            val viewModel: ExerciseSessionViewModel = viewModel(
-//                factory = ExerciseSessionViewModelFactory(
-//                    healthConnectManager = healthConnectManager
-//                )
-//            )
-//            val permissionsGranted by viewModel.permissionsGranted
-//            val sessionsList by viewModel.sessionsList
-//            val permissions = viewModel.permissions
-//            val backgroundReadAvailable by viewModel.backgroundReadAvailable
-//            val backgroundReadGranted by viewModel.backgroundReadGranted
-//            val onPermissionsResult = {viewModel.initialLoad()}
-//            val permissionsLauncher =
-//                rememberLauncherForActivityResult(viewModel.permissionsLauncher) {
-//                onPermissionsResult()}
-//            ExerciseSessionScreen(
-//                permissionsGranted = permissionsGranted,
-//                permissions = permissions,
-//                backgroundReadAvailable = backgroundReadAvailable,
-//                backgroundReadGranted = backgroundReadGranted,
-//                sessionsList = sessionsList,
-//                uiState = viewModel.uiState,
-//                onInsertClick = {
-//                    viewModel.insertExerciseSession()
-//                },
-//                onDetailsClick = { uid ->
-//                    navController.navigate(Screen.ExerciseSessionDetail.route + "/" + uid)
-//                },
-//                onDeleteClick = { uid ->
-//                    viewModel.deleteExerciseSession(uid)
-//                },
-//                onError = { exception ->
-//                    showExceptionSnackbar(scaffoldState, scope, exception)
-//                },
-//                onPermissionsResult = {
-//                    viewModel.initialLoad()
-//                },
-//                onPermissionsLaunch = { values ->
-//                    permissionsLauncher.launch(values)}
-//            )
-//        }
-//        composable(Screen.ExerciseSessionDetail.route + "/{$UID_NAV_ARGUMENT}") {
-//            val uid = it.arguments?.getString(UID_NAV_ARGUMENT)!!
-//            val viewModel: ExerciseSessionDetailViewModel = viewModel(
-//                factory = ExerciseSessionDetailViewModelFactory(
-//                    uid = uid,
-//                    healthConnectManager = healthConnectManager
-//                )
-//            )
-//            val permissionsGranted by viewModel.permissionsGranted
-//            val sessionMetrics by viewModel.sessionMetrics
-//            val permissions = viewModel.permissions
-//            val onPermissionsResult = {viewModel.initialLoad()}
-//            val permissionsLauncher =
-//                rememberLauncherForActivityResult(viewModel.permissionsLauncher) {
-//                onPermissionsResult()}
-//            ExerciseSessionDetailScreen(
-//                permissions = permissions,
-//                permissionsGranted = permissionsGranted,
-//                sessionMetrics = sessionMetrics,
-//                uiState = viewModel.uiState,
-//                onDetailsClick = { recordType, recordId, seriesRecordsType ->
-//                    navController.navigate(Screen.RecordListScreen.route + "/" + recordType + "/"+ recordId + "/" + seriesRecordsType)
-//                },
-//                onError = { exception ->
-//                    showExceptionSnackbar(scaffoldState, scope, exception)
-//                },
-//                onPermissionsResult = {
-//                    viewModel.initialLoad()
-//                },
-//                onPermissionsLaunch = { values ->
-//                    permissionsLauncher.launch(values)}
-//            )
-//        }
-//        composable(Screen.RecordListScreen.route + "/{$RECORD_TYPE}" + "/{$UID_NAV_ARGUMENT}" + "/{$SERIES_RECORDS_TYPE}") {
-//            val uid = it.arguments?.getString(UID_NAV_ARGUMENT)!!
-//            val recordTypeString = it.arguments?.getString(RECORD_TYPE)!!
-//            val seriesRecordsTypeString = it.arguments?.getString(SERIES_RECORDS_TYPE)!!
-//            val viewModel: RecordListScreenViewModel = viewModel(
-//                factory = RecordListViewModelFactory(
-//                    uid = uid,
-//                    recordTypeString = recordTypeString,
-//                    seriesRecordsTypeString = seriesRecordsTypeString,
-//                    healthConnectManager = healthConnectManager
-//                )
-//            )
-//            val permissionsGranted by viewModel.permissionsGranted
-//            val recordList = viewModel.recordList
-//            val permissions = viewModel.permissions
-//            val onPermissionsResult = {viewModel.initialLoad()}
-//            val permissionsLauncher =
-//                rememberLauncherForActivityResult(viewModel.permissionsLauncher) {
-//                    onPermissionsResult()}
-//            RecordListScreen(
-//                uid = uid,
-//                permissions = permissions,
-//                permissionsGranted = permissionsGranted,
-//                recordType = RecordType.valueOf(recordTypeString),
-//                seriesRecordsType = SeriesRecordsType.valueOf(seriesRecordsTypeString),
-//                recordList = recordList,
-//                uiState = viewModel.uiState,
-//                onPermissionsResult = {
-//                    viewModel.initialLoad()
-//                },
-//                onPermissionsLaunch = { values ->
-//                    permissionsLauncher.launch(values)}
-//            )
-//        }
         composable(Screen.WelcomeScreen.route) {
             val viewModel: SleepSessionViewModel = viewModel(
                 factory = SleepSessionViewModelFactory(
@@ -214,44 +84,6 @@ fun HealthConnectNavigation(
             )
 
         }
-//        composable(Screen.InputReadings.route) {
-//            val viewModel: InputReadingsViewModel = viewModel(
-//                factory = InputReadingsViewModelFactory(
-//                    healthConnectManager = healthConnectManager
-//                )
-//            )
-//            val permissionsGranted by viewModel.permissionsGranted
-//            val readingsList by viewModel.readingsList
-//            val permissions = viewModel.permissions
-//            val weeklyAvg by viewModel.weeklyAvg
-//            val onPermissionsResult = {viewModel.initialLoad()}
-//            val permissionsLauncher =
-//                rememberLauncherForActivityResult(viewModel.permissionsLauncher) {
-//                onPermissionsResult()}
-//            InputReadingsScreen(
-//                permissionsGranted = permissionsGranted,
-//                permissions = permissions,
-//
-//                uiState = viewModel.uiState,
-//                onInsertClick = { weightInput ->
-//                    viewModel.inputReadings(weightInput)
-//                },
-//                weeklyAvg = weeklyAvg,
-//                onDeleteClick = { uid ->
-//                    viewModel.deleteWeightInput(uid)
-//                },
-//                readingsList = readingsList,
-//                onError = { exception ->
-//                    showExceptionSnackbar(scaffoldState, scope, exception)
-//                },
-//                onPermissionsResult = {
-//                    viewModel.initialLoad()
-//                },
-//                onPermissionsLaunch = { values ->
-//                    permissionsLauncher.launch(values)}
-//            )
-//        }
-
 
         composable(Screen.DifferentialChanges.route) {
             val viewModel: DifferentialChangesViewModel = viewModel(

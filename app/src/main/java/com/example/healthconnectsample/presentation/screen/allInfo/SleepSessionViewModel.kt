@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.example.healthconnectsample.presentation.screen.exercisesessiondetail
+package com.example.healthconnectsample.presentation.screen.allInfo
 
 import android.os.RemoteException
 import androidx.compose.runtime.MutableState
@@ -21,36 +21,32 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.health.connect.client.permission.HealthPermission
-import androidx.health.connect.client.records.DistanceRecord
-import androidx.health.connect.client.records.HeartRateRecord
-import androidx.health.connect.client.records.SpeedRecord
-import androidx.health.connect.client.records.StepsRecord
-import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
+import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.healthconnectsample.data.ExerciseSessionData
 import com.example.healthconnectsample.data.HealthConnectManager
+import com.example.healthconnectsample.data.SleepSessionData
+import com.example.healthconnectsample.data.HeartRateData
 import kotlinx.coroutines.launch
 import java.io.IOException
 import java.util.UUID
 
-class ExerciseSessionDetailViewModel(
-    private val uid: String,
-    private val healthConnectManager: HealthConnectManager
-) : ViewModel() {
+class SleepSessionViewModel(private val healthConnectManager: HealthConnectManager) :
+    ViewModel() {
+
     val permissions = setOf(
-        HealthPermission.getReadPermission(StepsRecord::class),
-        HealthPermission.getReadPermission(DistanceRecord::class),
-        HealthPermission.getReadPermission(SpeedRecord::class),
-        HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class),
-        HealthPermission.getReadPermission(HeartRateRecord::class)
+        HealthPermission.getReadPermission(SleepSessionRecord::class),
+        HealthPermission.getWritePermission(SleepSessionRecord::class)
     )
 
     var permissionsGranted = mutableStateOf(false)
         private set
 
-    var sessionMetrics: MutableState<ExerciseSessionData> = mutableStateOf(ExerciseSessionData(uid))
+    var sessionsList: MutableState<List<SleepSessionData>> = mutableStateOf(listOf())
+        private set
+
+    var heartRateList: MutableState<List<HeartRateData>> = mutableStateOf(listOf())
         private set
 
     var uiState: UiState by mutableStateOf(UiState.Uninitialized)
@@ -59,13 +55,23 @@ class ExerciseSessionDetailViewModel(
     val permissionsLauncher = healthConnectManager.requestPermissionsActivityContract()
 
     fun initialLoad() {
-        readAssociatedSessionData()
-    }
-
-    private fun readAssociatedSessionData() {
         viewModelScope.launch {
             tryWithPermissionsCheck {
-                sessionMetrics.value = healthConnectManager.readAssociatedSessionData(uid)
+                sessionsList.value = healthConnectManager.readSleepSessions()
+
+                heartRateList.value = healthConnectManager.readHearsRate()
+
+            }
+        }
+    }
+
+    fun generateSleepData() {
+        viewModelScope.launch {
+            tryWithPermissionsCheck {
+                // Delete all existing sleep data before generating new random sleep data.
+                healthConnectManager.deleteAllSleepData()
+                healthConnectManager.generateSleepData()
+                sessionsList.value = healthConnectManager.readSleepSessions()
             }
         }
     }
@@ -108,15 +114,13 @@ class ExerciseSessionDetailViewModel(
     }
 }
 
-class ExerciseSessionDetailViewModelFactory(
-    private val uid: String,
+class SleepSessionViewModelFactory(
     private val healthConnectManager: HealthConnectManager
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(ExerciseSessionDetailViewModel::class.java)) {
+        if (modelClass.isAssignableFrom(SleepSessionViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ExerciseSessionDetailViewModel(
-                uid = uid,
+            return SleepSessionViewModel(
                 healthConnectManager = healthConnectManager
             ) as T
         }
