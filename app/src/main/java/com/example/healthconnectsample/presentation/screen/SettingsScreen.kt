@@ -1,5 +1,7 @@
 package com.example.healthconnectsample.presentation.screen
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.os.Build
@@ -28,20 +30,41 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.camera.view.PreviewView
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberPermissionState
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
+import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
+import android.content.Intent
+import android.net.Uri
 
 /**
  * Экран настроек, где можно либо выбрать изображение из галереи для сканирования QR-кода,
  * либо запустить камеру для сканирования QR-кода в реальном времени.
+ *
+ * Добавлена проверка разрешения на использование камеры с помощью Accompanist Permissions.
  */
+
+
+
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun SettingsScreen() {
     val context = LocalContext.current
     var qrCodeText by remember { mutableStateOf<String?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    // Флаг, указывающий, что активирован режим камеры.
+    // Флаг, указывающий, что включён режим камеры.
     var isCameraMode by remember { mutableStateOf(false) }
+
+    // Состояние разрешения на использование камеры
+    val cameraPermissionState = rememberPermissionState(permission = Manifest.permission.CAMERA)
+
+    // Если разрешение получено, автоматически включаем режим камеры
+    LaunchedEffect(cameraPermissionState.status) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            isCameraMode = true
+        }
+    }
 
     // Лаунчер для выбора изображения из галереи.
     val galleryLauncher = rememberLauncherForActivityResult(contract = GetContent()) { uri ->
@@ -74,26 +97,51 @@ fun SettingsScreen() {
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Кнопки для выбора способа сканирования
+        // Кнопка для выбора изображения из галереи.
         Button(onClick = {
-            // Режим выбора из галереи
             isCameraMode = false
             galleryLauncher.launch("image/*")
         }) {
             Text(text = "Выбрать изображение с QR-кодом")
         }
-        Button(onClick = {
-            // Включаем режим камеры
-            isCameraMode = true
-        }, modifier = Modifier.padding(top = 16.dp)) {
+        // Кнопка для запуска камеры
+        Button(
+            onClick = {
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                    isCameraMode = true
+                } else {
+                    // Если разрешение не выдано, запрашиваем разрешение.
+                    cameraPermissionState.launchPermissionRequest()
+                }
+            },
+            modifier = Modifier.padding(top = 16.dp)
+        ) {
             Text(text = "Сканировать QR-код камерой")
+        }
+
+        // Если разрешение запрещено (нет и возможности показать диалог rationale),
+        // предлагаем перейти в настройки приложения.
+        if (!(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)) {
+            Button(
+                onClick = {
+                    // Переход в настройки приложения, где пользователь может включить разрешение.
+                    val intent = Intent(
+                        android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.fromParts("package", context.packageName, null)
+                    )
+                    context.startActivity(intent)
+//                    cameraPermissionState.launchPermissionRequest()
+                },
+                modifier = Modifier.padding(top = 16.dp)
+            ) {
+                Text(text = "Предоставить разрешение в настройках")
+            }
         }
 
         // Если выбран режим камеры, отображаем превью с камеры
         if (isCameraMode) {
             CameraScannerScreen(
                 onQRCodeScanned = { result ->
-                    // При получении результата выключаем режим камеры
                     isCameraMode = false
                     qrCodeText = result ?: "QR-код не найден"
                 }
@@ -102,10 +150,16 @@ fun SettingsScreen() {
 
         // Отображение результата сканирования
         qrCodeText?.let {
-            Text(text = "Информация с QR-кода: $it", modifier = Modifier.padding(top = 16.dp))
+            Text(
+                text = "Информация с QR-кода: $it",
+                modifier = Modifier.padding(top = 16.dp)
+            )
         }
         errorMessage?.let {
-            Text(text = "Ошибка: $it", modifier = Modifier.padding(top = 8.dp))
+            Text(
+                text = "Ошибка: $it",
+                modifier = Modifier.padding(top = 8.dp)
+            )
         }
     }
 }
@@ -120,7 +174,6 @@ fun SettingsScreen() {
 fun decodeQRCodeMLKit(bitmap: Bitmap, onSuccess: (String?) -> Unit, onError: (Exception) -> Unit) {
     val image = InputImage.fromBitmap(bitmap, 0)
     val scanner = BarcodeScanning.getClient()
-
     scanner.process(image)
         .addOnSuccessListener { barcodes ->
             if (barcodes.isNotEmpty()) {
@@ -145,7 +198,6 @@ fun CameraScannerScreen(
     onQRCodeScanned: (String?) -> Unit
 ) {
     val context = LocalContext.current
-    // Важно: для работы CameraX требуется, чтобы контекст реализовывал LifecycleOwner.
     val lifecycleOwner = context as? LifecycleOwner
     var scannedResult by remember { mutableStateOf<String?>(null) }
 
@@ -164,7 +216,6 @@ fun CameraScannerScreen(
             modifier = Modifier.fillMaxSize()
         )
         scannedResult?.let { result ->
-            // Можно настроить оформление результата сканирования
             Text(
                 text = "Найден QR-код: $result",
                 modifier = Modifier.align(Alignment.BottomCenter)
@@ -174,7 +225,7 @@ fun CameraScannerScreen(
 }
 
 /**
- * Привязывает CameraX к циклу жизни и запускает анализ кадров с помощью ML Kit.
+ * Привязывает CameraX к жизненному циклу и запускает анализ кадров с помощью ML Kit.
  *
  * @param previewView Элемент предварительного просмотра камеры.
  * @param lifecycleOwner Владелец жизненного цикла (необходим для привязки камеры).
@@ -197,7 +248,6 @@ private fun bindCameraUseCases(
         val imageAnalysis = ImageAnalysis.Builder()
             .setBackpressureStrategy(STRATEGY_KEEP_ONLY_LATEST)
             .build()
-
         imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(context)) { imageProxy ->
             processImageProxy(imageProxy, onBarcodeFound)
         }
