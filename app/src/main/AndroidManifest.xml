@@ -13,11 +13,10 @@
   ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
-  -->
+-->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Разрешения на работу с Health Connect -->
-    <!-- Существующие разрешения -->
+    <!-- Базовые разрешения для Health Connect -->
     <uses-permission android:name="android.permission.health.READ_HEART_RATE"/>
     <uses-permission android:name="android.permission.health.WRITE_HEART_RATE"/>
     <uses-permission android:name="android.permission.health.READ_STEPS"/>
@@ -34,9 +33,9 @@
     <uses-permission android:name="android.permission.health.WRITE_TOTAL_CALORIES_BURNED"/>
     <uses-permission android:name="android.permission.health.READ_WEIGHT"/>
     <uses-permission android:name="android.permission.health.WRITE_WEIGHT"/>
-    <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND" />
+    <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND"/>
 
-    <!-- Дополнительные разрешения для дополнительных типов данных -->
+    <!-- Дополнительные разрешения для базовых дополнительных типов -->
     <uses-permission android:name="android.permission.health.READ_BLOOD_PRESSURE"/>
     <uses-permission android:name="android.permission.health.WRITE_BLOOD_PRESSURE"/>
     <uses-permission android:name="android.permission.health.READ_BODY_TEMPERATURE"/>
@@ -52,8 +51,53 @@
     <uses-permission android:name="android.permission.health.READ_BASAL_METABOLIC_RATE"/>
     <uses-permission android:name="android.permission.health.WRITE_BASAL_METABOLIC_RATE"/>
 
-    <!-- Разрешение для использования камеры (например, для сканирования QR-кода) -->
-    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Новые разрешения для дополнительных record‑типов -->
+    <!-- READ разрешения -->
+    <uses-permission android:name="android.permission.health.READ_ACTIVITY_INTENSITY"/>
+    <uses-permission android:name="android.permission.health.READ_BASAL_BODY_TEMPERATURE"/>
+    <!-- (READ_BASAL_METABOLIC_RATE, READ_BLOOD_GLUCOSE, READ_BLOOD_PRESSURE, READ_BODY_FAT,
+         READ_BODY_TEMPERATURE, READ_BODY_WATER_MASS, READ_BONE_MASS, READ_CERVICAL_MUCUS,
+         READ_DISTANCE, READ_ELEVATION_GAINED, READ_EXERCISE уже есть) -->
+    <uses-permission android:name="android.permission.health.READ_EXERCISE_ROUTES"/>
+    <uses-permission android:name="android.permission.health.READ_FLOORS_CLIMBED"/>
+    <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_HISTORY"/>
+    <!-- READ_HEALTH_DATA_IN_BACKGROUND уже есть -->
+    <uses-permission android:name="android.permission.health.READ_HEART_RATE"/>
+    <uses-permission android:name="android.permission.health.READ_HEART_RATE_VARIABILITY"/>
+    <uses-permission android:name="android.permission.health.READ_HEIGHT"/>
+    <uses-permission android:name="android.permission.health.READ_HYDRATION"/>
+    <uses-permission android:name="android.permission.health.READ_INTERMENSTRUAL_BLEEDING"/>
+    <uses-permission android:name="android.permission.health.READ_LEAN_BODY_MASS"/>
+    <uses-permission android:name="android.permission.health.READ_MEDICAL_DATA_ALLERGIES_INTOLERANCES"/>
+    <uses-permission android:name="android.permission.health.READ_MEDICAL_DATA_CONDITIONS"/>
+    <uses-permission android:name="android.permission.health.READ_MEDICAL_DATA_LABORATORY_RESULTS"/>
+    <uses-permission android:name="android.permission.health.READ_MEDICAL_DATA_MEDICATIONS"/>
+    <uses-permission android:name="android.permission.health.READ_MEDICAL_DATA_PERSONAL_DETAILS"/>
+    <uses-permission android:name="android.permission.health.READ_MEDICAL_DATA_PRACTITIONER_DETAILS"/>
+    <uses-permission android:name="android.permission.health.READ_MEDICAL_DATA_PREGNANCY"/>
+    <uses-permission android:name="android.permission.health.READ_MEDICAL_DATA_PROCEDURES"/>
+    <uses-permission android:name="android.permission.health.READ_MEDICAL_DATA_SOCIAL_HISTORY"/>
+    <uses-permission android:name="android.permission.health.READ_MEDICAL_DATA_VACCINES"/>
+    <uses-permission android:name="android.permission.health.READ_MEDICAL_DATA_VISITS"/>
+    <uses-permission android:name="android.permission.health.READ_MEDICAL_DATA_VITAL_SIGNS"/>
+    <uses-permission android:name="android.permission.health.READ_MENSTRUATION"/>
+    <uses-permission android:name="android.permission.health.READ_MINDFULNESS"/>
+    <uses-permission android:name="android.permission.health.READ_NUTRITION"/>
+    <uses-permission android:name="android.permission.health.READ_OVULATION_TEST"/>
+    <uses-permission android:name="android.permission.health.READ_OXYGEN_SATURATION"/>
+    <uses-permission android:name="android.permission.health.READ_PLANNED_EXERCISE"/>
+    <uses-permission android:name="android.permission.health.READ_POWER"/>
+    <uses-permission android:name="android.permission.health.READ_RESPIRATORY_RATE"/>
+    <uses-permission android:name="android.permission.health.READ_RESTING_HEART_RATE"/>
+    <uses-permission android:name="android.permission.health.READ_SEXUAL_ACTIVITY"/>
+    <uses-permission android:name="android.permission.health.READ_SKIN_TEMPERATURE"/>
+    <!-- READ_SLEEP, READ_SPEED, READ_STEPS, READ_TOTAL_CALORIES_BURNED, READ_VO2_MAX,
+         READ_WEIGHT, READ_WHEELCHAIR_PUSHES уже есть -->
+
+
+
+    <!-- Разрешение для использования камеры (например, для сканирования QR-кодов) -->
+    <uses-permission android:name="android.permission.CAMERA"/>
 
     <application
         android:allowBackup="true"
@@ -64,19 +108,19 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.HealthConnect">
 
-        <!-- Регистрация активности приложения -->
+        <!-- Регистрация основной активности -->
         <activity
             android:name="com.example.healthconnectsample.presentation.MainActivity"
             android:exported="true"
             android:theme="@style/Theme.HealthConnect">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
 
-            <!-- Обработка интента для показа политики конфиденциальности -->
+            <!-- Интент для показа политики конфиденциальности -->
             <intent-filter>
-                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE"/>
             </intent-filter>
 
             <!-- Permission handling для Android 14 -->
@@ -86,16 +130,14 @@
             </intent-filter>
         </activity>
 
-        <activity android:name="com.example.healthconnectsample.presentation.screen.QrCodeScannerActivity" />
-        <!-- <activity android:name=".presentation.screen.QrCodeScannerActivity" /> -->
+        <activity android:name="com.example.healthconnectsample.presentation.screen.QrCodeScannerActivity"/>
     </application>
 
     <queries>
-        <package android:name="com.google.android.apps.healthdata" />
-
+        <package android:name="com.google.android.apps.healthdata"/>
         <!-- Позволяет приложению получать информацию об установленных приложениях, использующих Health Connect -->
         <intent>
-            <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+            <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE"/>
         </intent>
     </queries>
 
