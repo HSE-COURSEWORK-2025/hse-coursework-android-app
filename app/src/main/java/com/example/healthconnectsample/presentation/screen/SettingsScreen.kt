@@ -1,9 +1,11 @@
 package com.example.healthconnectsample.presentation.screen
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
+import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -14,6 +16,7 @@ import androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST
 import androidx.camera.core.Preview
 import androidx.camera.core.ImageProxy
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,14 +32,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
-import androidx.camera.view.PreviewView
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
-import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
-import android.content.Intent
-import android.net.Uri
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import java.io.IOException
 
 /**
  * Экран настроек, где можно либо выбрать изображение из галереи для сканирования QR-кода,
@@ -44,15 +49,14 @@ import android.net.Uri
  *
  * Добавлена проверка разрешения на использование камеры с помощью Accompanist Permissions.
  */
-
-
-
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun SettingsScreen() {
     val context = LocalContext.current
     var qrCodeText by remember { mutableStateOf<String?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    // Состояние ответа HTTP-запроса
+    var httpResponse by remember { mutableStateOf<String?>(null) }
     // Флаг, указывающий, что включён режим камеры.
     var isCameraMode by remember { mutableStateOf(false) }
 
@@ -81,6 +85,12 @@ fun SettingsScreen() {
                 onSuccess = { result ->
                     qrCodeText = result ?: "QR-код не найден"
                     errorMessage = null
+                    result?.let { url ->
+                        // Выполняем запрос по считанному URL
+                        sendRequestToUrl(url) { response ->
+                            httpResponse = response
+                        }
+                    }
                 },
                 onError = { exception ->
                     errorMessage = exception.localizedMessage ?: "Ошибка декодирования"
@@ -130,7 +140,6 @@ fun SettingsScreen() {
                         Uri.fromParts("package", context.packageName, null)
                     )
                     context.startActivity(intent)
-//                    cameraPermissionState.launchPermissionRequest()
                 },
                 modifier = Modifier.padding(top = 16.dp)
             ) {
@@ -144,6 +153,12 @@ fun SettingsScreen() {
                 onQRCodeScanned = { result ->
                     isCameraMode = false
                     qrCodeText = result ?: "QR-код не найден"
+                    result?.let { url ->
+                        // Выполняем запрос по считанному URL
+                        sendRequestToUrl(url) { response ->
+                            httpResponse = response
+                        }
+                    }
                 }
             )
         }
@@ -161,6 +176,38 @@ fun SettingsScreen() {
                 modifier = Modifier.padding(top = 8.dp)
             )
         }
+        httpResponse?.let {
+            Text(
+                text = "Ответ с сервера: $it",
+                modifier = Modifier.padding(top = 16.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Отправляет HTTP GET-запрос по указанному URL.
+ *
+ * @param url Строка URL, полученная из QR-кода.
+ * @param onResult Функция, вызываемая с ответом сервера или сообщением об ошибке.
+ */
+fun sendRequestToUrl(url: String, onResult: (String) -> Unit) {
+    val client = OkHttpClient()
+    try {
+        val request = Request.Builder().url(url).build()
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                onResult("Ошибка запроса: ${e.localizedMessage}")
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                // Читаем ответ, ограничиваем его размер или форматируем по необходимости.
+                val body = response.body?.string() ?: "Пустой ответ"
+                onResult(body)
+            }
+        })
+    } catch (e: Exception) {
+        onResult("Некорректный URL или ошибка: ${e.localizedMessage}")
     }
 }
 
