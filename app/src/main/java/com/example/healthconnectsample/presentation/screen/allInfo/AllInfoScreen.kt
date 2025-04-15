@@ -19,6 +19,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.util.Log
 import android.util.Patterns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts.GetContent
@@ -32,14 +33,23 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Button
+import androidx.compose.material.LinearProgressIndicator
 import androidx.compose.material.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +57,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import com.example.healthconnectsample.R
@@ -81,9 +92,6 @@ import androidx.health.connect.client.records.SkinTemperatureRecord
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.common.InputImage
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -91,53 +99,50 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
-import org.json.JSONObject
 import java.io.IOException
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import android.util.Log
-import androidx.compose.material.LinearProgressIndicator
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.unit.sp
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.common.InputImage
 
 // Определение enum для типов данных
 enum class DataType(val typeName: String) {
-    SLEEP_SESSION_DATA("SleepSessionData"), BLOOD_OXYGEN_DATA("BloodOxygenData"), HEART_RATE_RECORD(
-        "HeartRateRecord"
-    ),
-    ACTIVE_CALORIES_BURNED_RECORD("ActiveCaloriesBurnedRecord"), BASAL_METABOLIC_RATE_RECORD("BasalMetabolicRateRecord"), BLOOD_PRESSURE_RECORD(
-        "BloodPressureRecord"
-    ),
-    BODY_FAT_RECORD("BodyFatRecord"), BODY_TEMPERATURE_RECORD("BodyTemperatureRecord"), BONE_MASS_RECORD(
-        "BoneMassRecord"
-    ),
-    DISTANCE_RECORD("DistanceRecord"), EXERCISE_SESSION_RECORD("ExerciseSessionRecord"), HYDRATION_RECORD(
-        "HydrationRecord"
-    ),
-    SPEED_RECORD("SpeedRecord"), STEPS_RECORD("StepsRecord"), TOTAL_CALORIES_BURNED_RECORD("TotalCaloriesBurnedRecord"), WEIGHT_RECORD(
-        "WeightRecord"
-    ),
-    BASAL_BODY_TEMPERATURE_RECORD("BasalBodyTemperatureRecord"), FLOORS_CLIMBED_RECORD("FloorsClimbedRecord"), INTERMENSTRUAL_BLEEDING_RECORD(
-        "IntermenstrualBleedingRecord"
-    ),
-    LEAN_BODY_MASS_RECORD("LeanBodyMassRecord"), MENSTRUATION_FLOW_RECORD("MenstruationFlowRecord"), NUTRITION_RECORD(
-        "NutritionRecord"
-    ),
-    POWER_RECORD("PowerRecord"), RESPIRATORY_RATE_RECORD("RespiratoryRateRecord"), RESTING_HEART_RATE_RECORD(
-        "RestingHeartRateRecord"
-    ),
+    SLEEP_SESSION_DATA("SleepSessionData"),
+    BLOOD_OXYGEN_DATA("BloodOxygenData"),
+    HEART_RATE_RECORD("HeartRateRecord"),
+    ACTIVE_CALORIES_BURNED_RECORD("ActiveCaloriesBurnedRecord"),
+    BASAL_METABOLIC_RATE_RECORD("BasalMetabolicRateRecord"),
+    BLOOD_PRESSURE_RECORD("BloodPressureRecord"),
+    BODY_FAT_RECORD("BodyFatRecord"),
+    BODY_TEMPERATURE_RECORD("BodyTemperatureRecord"),
+    BONE_MASS_RECORD("BoneMassRecord"),
+    DISTANCE_RECORD("DistanceRecord"),
+    EXERCISE_SESSION_RECORD("ExerciseSessionRecord"),
+    HYDRATION_RECORD("HydrationRecord"),
+    SPEED_RECORD("SpeedRecord"),
+    STEPS_RECORD("StepsRecord"),
+    TOTAL_CALORIES_BURNED_RECORD("TotalCaloriesBurnedRecord"),
+    WEIGHT_RECORD("WeightRecord"),
+    BASAL_BODY_TEMPERATURE_RECORD("BasalBodyTemperatureRecord"),
+    FLOORS_CLIMBED_RECORD("FloorsClimbedRecord"),
+    INTERMENSTRUAL_BLEEDING_RECORD("IntermenstrualBleedingRecord"),
+    LEAN_BODY_MASS_RECORD("LeanBodyMassRecord"),
+    MENSTRUATION_FLOW_RECORD("MenstruationFlowRecord"),
+    NUTRITION_RECORD("NutritionRecord"),
+    POWER_RECORD("PowerRecord"),
+    RESPIRATORY_RATE_RECORD("RespiratoryRateRecord"),
+    RESTING_HEART_RATE_RECORD("RestingHeartRateRecord"),
     SKIN_TEMPERATURE_RECORD("SkinTemperatureRecord")
 }
-
 
 object GlobalConfig {
     var config: ConfigData? = null
 }
 
-// Модель для конфигурационных данных, получаемых по URL из QR-кода.
+// Модель для конфигурационных данных, получаемых по URL из QR‑кода.
 data class ConfigData(
     val post_here: String,
     val access_token: String,
@@ -146,24 +151,18 @@ data class ConfigData(
     val token_type: String
 )
 
-
+// Функция для экспорта данных в фоне для переданного списка
 fun <T> exportHealthDataInBackground(
-    dataList: List<T>, dataType: DataType, onProgressUpdate: (completed: Int, total: Int) -> Unit
+    dataList: List<T>,
+    dataType: DataType,
+    onProgressUpdate: (completed: Int, total: Int) -> Unit
 ) {
     GlobalConfig.config?.let { config ->
         CoroutineScope(Dispatchers.IO).launch {
-            // Вызываем suspend функцию exportDataInBatches из корутины
             exportDataInBatches(dataType, dataList, config, onProgressUpdate)
         }
     }
 }
-
-data class ExportProgressInfo(
-    val dataType: DataType,
-    val currentCount: Int,
-    val totalCount: Int,
-    val dataList: List<Any>
-)
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -203,8 +202,10 @@ fun AllInfoScreen(
 ) {
     val context = LocalContext.current
 
-    // Стейт для отслеживания прогресса экспорта
-    var exportProgress by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    // Локальное состояние для конфигурации – после успешного сканирования обновится и инициирует экспорт
+    var configState by remember { mutableStateOf<ConfigData?>(null) }
+    // Состояние для отслеживания прогресса экспорта для каждого типа
+    val exportProgressMap = remember { mutableStateMapOf<DataType, Pair<Int, Int>>() }
 
     // Обработка ошибок для загрузки данных Health Connect
     val errorId = rememberSaveable { mutableStateOf(UUID.randomUUID()) }
@@ -218,133 +219,145 @@ fun AllInfoScreen(
         }
     }
 
-    // Состояния для QR‑код сканера, результата HTTP‑запроса и экспорта
-    var qrCodeText by remember { mutableStateOf<String?>(null) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var httpResponse by remember { mutableStateOf<String?>(null) }
+    // Состояния для режима сканера
     var isCameraMode by remember { mutableStateOf(false) }
 
     // Состояние разрешения для камеры
     val cameraPermissionState = rememberPermissionState(permission = Manifest.permission.CAMERA)
 
-    // Основной контейнер – Box: здесь основной контент и внизу прогресс бар
+    // Основной контент в скроллируемом Column, чтобы все элементы не наезжали друг на друга
     Box(modifier = Modifier.fillMaxSize()) {
-        // Основной контент
-        if (!isCameraMode) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = 80.dp), // отступ снизу, чтобы прогресс-бар не накладывался
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Top
-            ) {
-                if (!permissionsGranted) {
-                    item {
-                        Button(
-                            onClick = { onPermissionsLaunch(permissions) },
-                            modifier = Modifier.padding(top = 16.dp)
-                        ) {
-                            Text(text = stringResource(R.string.permissions_button_label))
-                        }
-                    }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Кнопки для запроса разрешений и открытия камеры
+            if (!permissionsGranted) {
+                Button(onClick = { onPermissionsLaunch(permissions) }) {
+                    Text(text = stringResource(R.string.permissions_button_label))
                 }
-                // Кнопка "Открыть камеру"
-                item {
-                    Button(
-                        onClick = {
-                            if (ContextCompat.checkSelfPermission(
-                                    context, Manifest.permission.CAMERA
-                                ) == PackageManager.PERMISSION_GRANTED
-                            ) {
-                                isCameraMode = true
-                            } else {
-                                cameraPermissionState.launchPermissionRequest()
-                            }
-                        },
-                        modifier = Modifier.padding(top = 16.dp)
+            }
+            Button(
+                onClick = {
+                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+                        == PackageManager.PERMISSION_GRANTED
                     ) {
-                        Text(text = "Открыть камеру")
+                        isCameraMode = true
+                    } else {
+                        cameraPermissionState.launchPermissionRequest()
                     }
-                }
-                if (ContextCompat.checkSelfPermission(
-                        context, Manifest.permission.CAMERA
-                    ) != PackageManager.PERMISSION_GRANTED
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(text = "Открыть камеру")
+            }
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                Button(
+                    onClick = {
+                        val intent = Intent(
+                            android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.fromParts("package", context.packageName, null)
+                        )
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    item {
-                        Button(
-                            onClick = {
-                                val intent = Intent(
-                                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                    Uri.fromParts("package", context.packageName, null)
+                    Text(text = "Предоставить разрешение в настройках")
+                }
+            }
+
+            // Секция для progressbar-ов для каждого типа экспорта
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Собираем данные для экспорта по типам
+                val exports = listOf(
+                    DataType.SLEEP_SESSION_DATA to sleepSessionsList,
+                    DataType.BLOOD_OXYGEN_DATA to bloodOxygenList,
+                    DataType.HEART_RATE_RECORD to heartRateList,
+                    DataType.ACTIVE_CALORIES_BURNED_RECORD to activeCaloriesList,
+                    DataType.BASAL_METABOLIC_RATE_RECORD to basalMetabolicRateList,
+                    DataType.BLOOD_PRESSURE_RECORD to bloodPressureList,
+                    DataType.BODY_FAT_RECORD to bodyFatList,
+                    DataType.BODY_TEMPERATURE_RECORD to bodyTemperatureList,
+                    DataType.BONE_MASS_RECORD to boneMassList,
+                    DataType.DISTANCE_RECORD to distanceList,
+                    DataType.EXERCISE_SESSION_RECORD to exerciseSessionList,
+                    DataType.HYDRATION_RECORD to hydrationList,
+                    DataType.SPEED_RECORD to speedList,
+                    DataType.STEPS_RECORD to stepsList,
+                    DataType.TOTAL_CALORIES_BURNED_RECORD to totalCaloriesBurnedList,
+                    DataType.WEIGHT_RECORD to weightList,
+                    DataType.BASAL_BODY_TEMPERATURE_RECORD to basalBodyTemperatureList,
+                    DataType.FLOORS_CLIMBED_RECORD to floorsClimbedList,
+                    DataType.INTERMENSTRUAL_BLEEDING_RECORD to intermenstrualBleedingList,
+                    DataType.LEAN_BODY_MASS_RECORD to leanBodyMassList,
+                    DataType.MENSTRUATION_FLOW_RECORD to menstruationFlowList,
+                    DataType.NUTRITION_RECORD to nutritionList,
+                    DataType.POWER_RECORD to powerList,
+                    DataType.RESPIRATORY_RATE_RECORD to respiratoryRateList,
+                    DataType.RESTING_HEART_RATE_RECORD to restingHeartRateList,
+                    DataType.SKIN_TEMPERATURE_RECORD to skinTemperatureList
+                )
+                // Если конфигурация уже получена (configState != null), запускаем экспорт для каждого типа
+                configState?.let { _ ->
+                    exports.forEach { (type, dataList) ->
+                        if (dataList.isNotEmpty()) {
+                            if (exportProgressMap[type] == null) {
+                                exportHealthDataInBackground(dataList, type) { completed, total ->
+                                    exportProgressMap[type] = completed to total
+                                }
+                            }
+                            val progress = exportProgressMap[type] ?: (0 to dataList.size)
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Text(
+                                    text = type.typeName,
+                                    fontSize = 16.sp,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Center
                                 )
-                                context.startActivity(intent)
-                            },
-                            modifier = Modifier.padding(top = 16.dp)
-                        ) {
-                            Text(text = "Предоставить разрешение в настройках")
+                                LinearProgressIndicator(
+                                    progress = if (progress.second > 0) progress.first.toFloat() / progress.second else 0f,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Text(
+                                    text = "Выгружено ${progress.first} из ${progress.second}",
+                                    fontSize = 16.sp,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         }
-                    }
-                }
-                // Вывод ранее полученной информации
-                if (qrCodeText != null) {
-                    item {
-                        Text(
-                            text = "Информация с QR-кода: $qrCodeText",
-                            modifier = Modifier.padding(top = 16.dp),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-                if (errorMessage != null) {
-                    item {
-                        Text(
-                            text = "Ошибка: $errorMessage",
-                            modifier = Modifier.padding(top = 8.dp),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-                if (httpResponse != null && GlobalConfig.config != null) {
-                    item {
-                        Text(
-                            text = "Ответ с сервера: ${GlobalConfig.config}",
-                            modifier = Modifier.padding(top = 16.dp),
-                            textAlign = TextAlign.Center
-                        )
                     }
                 }
             }
-        } else {
-            // Режим сканера: превью камеры и кнопка "Назад"
+        }
+
+        // Если включён режим сканера, отображаем его поверх основного экрана
+        if (isCameraMode) {
             Box(modifier = Modifier.fillMaxSize()) {
                 CameraScannerScreen(
                     onQRCodeScanned = { result ->
+                        // Если URL невалидный, просто выключаем режим сканера
                         if (result.isNullOrEmpty() || !isValidUrl(result)) {
-                            errorMessage = "Невалидный URL"
                             isCameraMode = false
                         } else {
-                            qrCodeText = result
                             sendRequestToUrl(result) { response ->
                                 try {
                                     val config = parseConfig(response)
-                                    if (config == null) {
-                                        errorMessage = "Некорректный формат ответа от сервера"
-                                    } else {
-                                        httpResponse = response
+                                    if (config != null) {
+                                        // Обновляем глобальное состояние и локальный state
                                         GlobalConfig.config = config
-
-                                        // Запускаем экспорт, например, для heartRateList.
-                                        // Передаем callback для обновления прогресса.
-                                        exportHealthDataInBackground(
-                                            heartRateList,
-                                            dataType = DataType.HEART_RATE_RECORD
-                                        ) { completed, total ->
-                                            exportProgress = completed to total
-                                            // При достижении полного экспорта можно выполнить дополнительные действия
-                                        }
+                                        configState = config
                                     }
                                 } catch (e: Exception) {
-                                    errorMessage = "Ошибка обработки ответа: ${e.localizedMessage}"
+                                    // Обработка ошибки – можно добавить отображение ошибки
                                 }
                             }
                             isCameraMode = false
@@ -361,34 +374,8 @@ fun AllInfoScreen(
                 }
             }
         }
-
-        // Прогресс-бар размещён в нижней части экрана (по оси Y)
-        if (exportProgress != null) {
-            // Размещаем прогресс-индикатор у нижней границы Box
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                val (completed, total) = exportProgress!!
-                val progressFraction = completed.toFloat() / total
-                LinearProgressIndicator(
-                    progress = progressFraction,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Text(
-                    text = "Выгружено $completed из $total записей",
-                    modifier = Modifier.padding(top = 8.dp),
-                    textAlign = TextAlign.Center,
-                    fontSize = 16.sp
-                )
-            }
-        }
     }
 }
-
 
 /**
  * Проверяет, является ли строка валидным URL.
@@ -408,7 +395,6 @@ fun sendRequestToUrl(url: String, onResult: (String) -> Unit) {
             override fun onFailure(call: Call, e: IOException) {
                 onResult("Ошибка запроса: ${e.localizedMessage}")
             }
-
             override fun onResponse(call: Call, response: Response) {
                 val body = response.body?.string() ?: "Пустой ответ"
                 onResult(body)
@@ -442,14 +428,11 @@ suspend fun <T> exportDataInBatches(
     val gson = Gson()
     val jsonMediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
     val client = OkHttpClient()
-
     val total = dataList.size
     var completed = 0
 
-    // Логируем общее количество записей
     Log.d("ExportData", "Экспортируется $total записей для типа ${dataType.typeName}")
 
-    // Разбиваем список на пачки по 50
     val batches = dataList.chunked(50)
     for (batch in batches) {
         val endpoint = "${config.post_here}/${dataType.typeName}"
@@ -463,18 +446,15 @@ suspend fun <T> exportDataInBatches(
             }
         } catch (e: Exception) {
             Log.e("ExportData", "Ошибка при выгрузке пачки: ${e.localizedMessage}")
-            // Вы можете добавить логику по повторной попытке или остановке экспорта
         }
 
         completed += batch.size
 
-        // Вызываем withContext, так как эта функция теперь вызывается из suspend‑функции
         withContext(Dispatchers.Main) {
             onProgressUpdate(completed, total)
         }
     }
 }
-
 
 /**
  * Отображает превью камеры и запускает обработку кадров для сканирования QR‑кода.
@@ -491,17 +471,19 @@ fun CameraScannerScreen(
             factory = { ctx ->
                 PreviewView(ctx).also { previewView ->
                     bindCameraUseCases(previewView, lifecycleOwner) { result ->
-                        result?.let {
-                            scannedResult = it
-                            onQRCodeScanned(it)
+                        result?.let { res: String ->
+                            scannedResult = res
+                            onQRCodeScanned(res)
                         }
                     }
                 }
-            }, modifier = Modifier.fillMaxSize()
+            },
+            modifier = Modifier.fillMaxSize()
         )
-        scannedResult?.let { result ->
+        scannedResult?.let { result: String ->
             Text(
-                text = "Найден QR-код: $result", modifier = Modifier.align(Alignment.BottomCenter)
+                text = "Найден QR-код: $result",
+                modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
     }
@@ -511,7 +493,9 @@ fun CameraScannerScreen(
  * Привязывает CameraX к жизненному циклу и запускает анализ кадров с помощью ML Kit.
  */
 private fun bindCameraUseCases(
-    previewView: PreviewView, lifecycleOwner: LifecycleOwner?, onBarcodeFound: (String?) -> Unit
+    previewView: PreviewView,
+    lifecycleOwner: LifecycleOwner?,
+    onBarcodeFound: (String?) -> Unit
 ) {
     val context = previewView.context
     val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
@@ -520,8 +504,9 @@ private fun bindCameraUseCases(
         val preview = Preview.Builder().build().also {
             it.setSurfaceProvider(previewView.surfaceProvider)
         }
-        val imageAnalysis =
-            ImageAnalysis.Builder().setBackpressureStrategy(STRATEGY_KEEP_ONLY_LATEST).build()
+        val imageAnalysis = ImageAnalysis.Builder()
+            .setBackpressureStrategy(STRATEGY_KEEP_ONLY_LATEST)
+            .build()
         imageAnalysis.setAnalyzer(
             ContextCompat.getMainExecutor(context)
         ) { imageProxy ->
@@ -530,7 +515,10 @@ private fun bindCameraUseCases(
         try {
             cameraProvider.unbindAll()
             cameraProvider.bindToLifecycle(
-                lifecycleOwner!!, CameraSelector.DEFAULT_BACK_CAMERA, preview, imageAnalysis
+                lifecycleOwner!!,
+                CameraSelector.DEFAULT_BACK_CAMERA,
+                preview,
+                imageAnalysis
             )
         } catch (exc: Exception) {
             exc.printStackTrace()
@@ -542,24 +530,28 @@ private fun bindCameraUseCases(
  * Обрабатывает кадр с камеры, пытаясь извлечь QR‑код с помощью ML Kit.
  */
 private fun processImageProxy(
-    imageProxy: ImageProxy, onBarcodeFound: (String?) -> Unit
+    imageProxy: ImageProxy,
+    onBarcodeFound: (String?) -> Unit
 ) {
     val mediaImage = imageProxy.image
     if (mediaImage != null) {
         val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
         val scanner = BarcodeScanning.getClient()
-        scanner.process(image).addOnSuccessListener { barcodes ->
-            if (barcodes.isNotEmpty()) {
-                onBarcodeFound(barcodes.first().rawValue)
-            } else {
+        scanner.process(image)
+            .addOnSuccessListener { barcodes ->
+                if (barcodes.isNotEmpty()) {
+                    onBarcodeFound(barcodes.first().rawValue)
+                } else {
+                    onBarcodeFound(null)
+                }
+            }
+            .addOnFailureListener { e ->
+                e.printStackTrace()
                 onBarcodeFound(null)
             }
-        }.addOnFailureListener { e ->
-            e.printStackTrace()
-            onBarcodeFound(null)
-        }.addOnCompleteListener {
-            imageProxy.close()
-        }
+            .addOnCompleteListener {
+                imageProxy.close()
+            }
     } else {
         imageProxy.close()
     }
