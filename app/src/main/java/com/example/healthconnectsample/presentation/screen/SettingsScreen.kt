@@ -65,40 +65,16 @@ fun SettingsScreen() {
 
     // Если разрешение получено, автоматически включаем режим камеры
     LaunchedEffect(cameraPermissionState.status) {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(
+                context, Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
             isCameraMode = true
         }
     }
 
     // Лаунчер для выбора изображения из галереи.
-    val galleryLauncher = rememberLauncherForActivityResult(contract = GetContent()) { uri ->
-        uri?.let {
-            // Получаем Bitmap в зависимости от версии API
-            val bitmap: Bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, it))
-            } else {
-                MediaStore.Images.Media.getBitmap(context.contentResolver, it)
-            }
-            // Запускаем декодирование QR-кода через ML Kit
-            decodeQRCodeMLKit(
-                bitmap = bitmap,
-                onSuccess = { result ->
-                    qrCodeText = result ?: "QR-код не найден"
-                    errorMessage = null
-                    result?.let { url ->
-                        // Выполняем запрос по считанному URL
-                        sendRequestToUrl(url) { response ->
-                            httpResponse = response
-                        }
-                    }
-                },
-                onError = { exception ->
-                    errorMessage = exception.localizedMessage ?: "Ошибка декодирования"
-                    qrCodeText = null
-                }
-            )
-        }
-    }
+
 
     Column(
         modifier = Modifier
@@ -108,30 +84,30 @@ fun SettingsScreen() {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Кнопка для выбора изображения из галереи.
-        Button(onClick = {
-            isCameraMode = false
-            galleryLauncher.launch("image/*")
-        }) {
-            Text(text = "Выбрать изображение с QR-кодом")
-        }
+
         // Кнопка для запуска камеры
         Button(
             onClick = {
-                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                if (ContextCompat.checkSelfPermission(
+                        context, Manifest.permission.CAMERA
+                    ) == PackageManager.PERMISSION_GRANTED
+                ) {
                     isCameraMode = true
                 } else {
                     // Если разрешение не выдано, запрашиваем разрешение.
                     cameraPermissionState.launchPermissionRequest()
                 }
-            },
-            modifier = Modifier.padding(top = 16.dp)
+            }, modifier = Modifier.padding(top = 16.dp)
         ) {
             Text(text = "Сканировать QR-код камерой")
         }
 
         // Если разрешение запрещено (нет и возможности показать диалог rationale),
         // предлагаем перейти в настройки приложения.
-        if (!(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)) {
+        if (!(ContextCompat.checkSelfPermission(
+                context, Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED)
+        ) {
             Button(
                 onClick = {
                     // Переход в настройки приложения, где пользователь может включить разрешение.
@@ -140,8 +116,7 @@ fun SettingsScreen() {
                         Uri.fromParts("package", context.packageName, null)
                     )
                     context.startActivity(intent)
-                },
-                modifier = Modifier.padding(top = 16.dp)
+                }, modifier = Modifier.padding(top = 16.dp)
             ) {
                 Text(text = "Предоставить разрешение в настройках")
             }
@@ -159,38 +134,29 @@ fun SettingsScreen() {
                             httpResponse = response
                         }
                     }
-                }
-            )
+                })
         }
 
         // Отображение результата сканирования
         qrCodeText?.let {
             Text(
-                text = "Информация с QR-кода: $it",
-                modifier = Modifier.padding(top = 16.dp)
+                text = "Информация с QR-кода: $it", modifier = Modifier.padding(top = 16.dp)
             )
         }
         errorMessage?.let {
             Text(
-                text = "Ошибка: $it",
-                modifier = Modifier.padding(top = 8.dp)
+                text = "Ошибка: $it", modifier = Modifier.padding(top = 8.dp)
             )
         }
         httpResponse?.let {
             Text(
-                text = "Ответ с сервера: $it",
-                modifier = Modifier.padding(top = 16.dp)
+                text = "Ответ с сервера: $it", modifier = Modifier.padding(top = 16.dp)
             )
         }
     }
 }
 
-/**
- * Отправляет HTTP GET-запрос по указанному URL.
- *
- * @param url Строка URL, полученная из QR-кода.
- * @param onResult Функция, вызываемая с ответом сервера или сообщением об ошибке.
- */
+
 fun sendRequestToUrl(url: String, onResult: (String) -> Unit) {
     val client = OkHttpClient()
     try {
@@ -211,35 +177,7 @@ fun sendRequestToUrl(url: String, onResult: (String) -> Unit) {
     }
 }
 
-/**
- * Декодирование QR-кода из Bitmap с использованием Google ML Kit.
- *
- * @param bitmap Изображение с QR-кодом.
- * @param onSuccess Колбэк при успешном извлечении данных (null, если QR-код не найден).
- * @param onError Колбэк при возникновении ошибки.
- */
-fun decodeQRCodeMLKit(bitmap: Bitmap, onSuccess: (String?) -> Unit, onError: (Exception) -> Unit) {
-    val image = InputImage.fromBitmap(bitmap, 0)
-    val scanner = BarcodeScanning.getClient()
-    scanner.process(image)
-        .addOnSuccessListener { barcodes ->
-            if (barcodes.isNotEmpty()) {
-                val rawValue = barcodes.first().rawValue
-                onSuccess(rawValue)
-            } else {
-                onSuccess(null)
-            }
-        }
-        .addOnFailureListener { exception ->
-            onError(exception)
-        }
-}
 
-/**
- * Экран, который открывает камеру и сканирует QR-код в реальном времени.
- *
- * @param onQRCodeScanned Функция, вызываемая при успешном сканировании QR-кода.
- */
 @Composable
 fun CameraScannerScreen(
     onQRCodeScanned: (String?) -> Unit
@@ -259,13 +197,11 @@ fun CameraScannerScreen(
                         }
                     }
                 }
-            },
-            modifier = Modifier.fillMaxSize()
+            }, modifier = Modifier.fillMaxSize()
         )
         scannedResult?.let { result ->
             Text(
-                text = "Найден QR-код: $result",
-                modifier = Modifier.align(Alignment.BottomCenter)
+                text = "Найден QR-код: $result", modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
     }
@@ -279,9 +215,7 @@ fun CameraScannerScreen(
  * @param onBarcodeFound Функция, вызываемая при обнаружении QR-кода.
  */
 private fun bindCameraUseCases(
-    previewView: PreviewView,
-    lifecycleOwner: LifecycleOwner?,
-    onBarcodeFound: (String?) -> Unit
+    previewView: PreviewView, lifecycleOwner: LifecycleOwner?, onBarcodeFound: (String?) -> Unit
 ) {
     val context = previewView.context
     val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
@@ -289,12 +223,12 @@ private fun bindCameraUseCases(
         val cameraProvider = cameraProviderFuture.get()
 
         // Use case для предварительного просмотра
-        val preview = Preview.Builder().build().also { it.setSurfaceProvider(previewView.surfaceProvider) }
+        val preview =
+            Preview.Builder().build().also { it.setSurfaceProvider(previewView.surfaceProvider) }
 
         // Use case для анализа изображений
-        val imageAnalysis = ImageAnalysis.Builder()
-            .setBackpressureStrategy(STRATEGY_KEEP_ONLY_LATEST)
-            .build()
+        val imageAnalysis =
+            ImageAnalysis.Builder().setBackpressureStrategy(STRATEGY_KEEP_ONLY_LATEST).build()
         imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(context)) { imageProxy ->
             processImageProxy(imageProxy, onBarcodeFound)
         }
@@ -302,10 +236,7 @@ private fun bindCameraUseCases(
         try {
             cameraProvider.unbindAll()
             cameraProvider.bindToLifecycle(
-                lifecycleOwner!!,
-                CameraSelector.DEFAULT_BACK_CAMERA,
-                preview,
-                imageAnalysis
+                lifecycleOwner!!, CameraSelector.DEFAULT_BACK_CAMERA, preview, imageAnalysis
             )
         } catch (exc: Exception) {
             exc.printStackTrace()
@@ -320,26 +251,22 @@ private fun bindCameraUseCases(
  * @param onBarcodeFound Функция, вызываемая при обнаружении QR-кода.
  */
 private fun processImageProxy(
-    imageProxy: ImageProxy,
-    onBarcodeFound: (String?) -> Unit
+    imageProxy: ImageProxy, onBarcodeFound: (String?) -> Unit
 ) {
     val mediaImage = imageProxy.image
     if (mediaImage != null) {
         val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
         val scanner = BarcodeScanning.getClient()
-        scanner.process(image)
-            .addOnSuccessListener { barcodes ->
+        scanner.process(image).addOnSuccessListener { barcodes ->
                 if (barcodes.isNotEmpty()) {
                     onBarcodeFound(barcodes.first().rawValue)
                 } else {
                     onBarcodeFound(null)
                 }
-            }
-            .addOnFailureListener { e ->
+            }.addOnFailureListener { e ->
                 e.printStackTrace()
                 onBarcodeFound(null)
-            }
-            .addOnCompleteListener {
+            }.addOnCompleteListener {
                 imageProxy.close()
             }
     } else {

@@ -131,7 +131,6 @@
             </intent-filter>
         </activity>
 
-        <activity android:name="com.example.healthconnectsample.presentation.screen.QrCodeScannerActivity"/>
     </application>
 
     <queries>
