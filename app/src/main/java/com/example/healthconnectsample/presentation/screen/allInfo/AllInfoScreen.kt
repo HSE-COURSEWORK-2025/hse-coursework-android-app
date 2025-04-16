@@ -417,7 +417,49 @@ fun parseConfig(response: String): ConfigData? {
 }
 
 /**
- * Экспортирует данные пачками по 50 элементов.
+ * Обновляет access_token, используя refresh_token.
+ * Если обновление успешно, возвращает true и обновляет config.access_token.
+ */
+fun refreshAccessToken(config: ConfigData): Boolean {
+    val client = OkHttpClient()
+    val gson = Gson()
+    // Формируем JSON‑тело запроса для обновления токена:
+    val requestBodyJson = gson.toJson(mapOf("refresh_token" to config.refresh_token))
+    val jsonMediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+    val requestBody = requestBodyJson.toRequestBody(jsonMediaType)
+
+    // Формируем запрос к refresh URL:
+    val request = Request.Builder()
+        .url(config.refresh_token_url)
+        .post(requestBody)
+        .addHeader("accept", "application/json")
+        .addHeader("Authorization", "Bearer ${config.access_token}")
+        .addHeader("Content-Type", "application/json")
+        .build()
+
+    try {
+        client.newCall(request).execute().use { response ->
+            if (response.code == 200) {
+                val responseBody = response.body?.string()
+                if (!responseBody.isNullOrEmpty()) {
+                    // Предполагается, что в ответе присутствует новое поле access_token
+                    val refreshedData = gson.fromJson(responseBody, ConfigData::class.java)
+                    if (!refreshedData.access_token.isNullOrEmpty()) {
+                        // Обновляем токен как в глобальной конфигурации, так и в локальной переменной config.
+                        GlobalConfig.config = config.copy(access_token = refreshedData.access_token)
+                        return true
+                    }
+                }
+            }
+        }
+    } catch (e: Exception) {
+        Log.e("RefreshToken", "Ошибка при обновлении access_token: ${e.localizedMessage}")
+    }
+    return false
+}
+
+/**
+ * Экспортирует данные пачками по 50 элементов с учетом проверки HTTP‑кода ответа и обновления токена.
  */
 suspend fun <T> exportDataInBatches(
     dataType: DataType,
@@ -435,17 +477,56 @@ suspend fun <T> exportDataInBatches(
 
     val batches = dataList.chunked(50)
     for (batch in batches) {
+        // Формируем конечную точку (endpoint) для экспорта:
         val endpoint = "${config.post_here}/${dataType.typeName}"
         val jsonBody = gson.toJson(batch)
         val requestBody = jsonBody.toRequestBody(jsonMediaType)
-        val request = Request.Builder().url(endpoint).post(requestBody).build()
+
+        // Функция для формирования запроса с текущим токеном:
+        fun buildRequest(token: String): Request {
+            return Request.Builder()
+                .url(endpoint)
+                .post(requestBody)
+                .addHeader("Authorization", "Bearer $token")
+                .addHeader("Content-Type", "application/json")
+                .build()
+        }
+
+        var request = buildRequest(config.access_token)
+        var responseSuccess = false
 
         try {
             client.newCall(request).execute().use { response ->
-                Log.d("ExportData", "Пачка успешно выгружена: ${response.code}")
+                // Если получен код не 2xx, то пробуем обработать ошибку
+                if (response.code in 200..299) {
+                    Log.d("ExportData", "Пачка успешно выгружена: ${response.code}")
+                    responseSuccess = true
+                } else {
+                    Log.e("ExportData", "Ошибка: получен код ${response.code} при экспорте в $endpoint")
+                    // Если ошибка 403 — пробуем обновить токен
+                    if (response.code == 403) {
+                        if (refreshAccessToken(config)) {
+                            // После обновления пересобираем запрос с новым токеном и повторяем попытку
+                            request = buildRequest(GlobalConfig.config!!.access_token)
+                            client.newCall(request).execute().use { refreshedResponse ->
+                                if (refreshedResponse.code in 200..299) {
+                                    Log.d("ExportData", "Пачка успешно выгружена после обновления токена: ${refreshedResponse.code}")
+                                    responseSuccess = true
+                                } else {
+                                    Log.e("ExportData", "Ошибка после обновления токена: ${refreshedResponse.code}")
+                                }
+                            }
+                        }
+                    }
+                }
             }
         } catch (e: Exception) {
             Log.e("ExportData", "Ошибка при выгрузке пачки: ${e.localizedMessage}")
+        }
+
+        // Если ни первоначальный, ни повторный запрос не прошли успешно – можно здесь добавить логику повторных попыток или уведомить пользователя.
+        if (!responseSuccess) {
+            Log.e("ExportData", "Не удалось экспортировать пачку данных для ${dataType.typeName}")
         }
 
         completed += batch.size
