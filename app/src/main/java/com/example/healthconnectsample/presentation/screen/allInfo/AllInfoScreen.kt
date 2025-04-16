@@ -33,16 +33,16 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
 import androidx.compose.material.LinearProgressIndicator
 import androidx.compose.material.Text
+import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateMapOf
@@ -164,6 +164,23 @@ fun <T> exportHealthDataInBackground(
     }
 }
 
+/**
+ * Показывает диалоговое окно с предупреждением
+ */
+@Composable
+fun WarningDialog(message: String, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = "Предупреждение") },
+        text = { Text(text = message) },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = "OK")
+            }
+        }
+    )
+}
+
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun AllInfoScreen(
@@ -206,6 +223,8 @@ fun AllInfoScreen(
     var configState by remember { mutableStateOf<ConfigData?>(null) }
     // Состояние для отслеживания прогресса экспорта для каждого типа
     val exportProgressMap = remember { mutableStateMapOf<DataType, Pair<Int, Int>>() }
+    // Состояние для отображения предупреждений
+    var warningMessage by remember { mutableStateOf<String?>(null) }
 
     // Обработка ошибок для загрузки данных Health Connect
     val errorId = rememberSaveable { mutableStateOf(UUID.randomUUID()) }
@@ -225,7 +244,6 @@ fun AllInfoScreen(
     // Состояние разрешения для камеры
     val cameraPermissionState = rememberPermissionState(permission = Manifest.permission.CAMERA)
 
-    // Основной контент в скроллируемом Column, чтобы все элементы не наезжали друг на друга
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -276,7 +294,6 @@ fun AllInfoScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Собираем данные для экспорта по типам
                 val exports = listOf(
                     DataType.SLEEP_SESSION_DATA to sleepSessionsList,
                     DataType.BLOOD_OXYGEN_DATA to bloodOxygenList,
@@ -305,8 +322,7 @@ fun AllInfoScreen(
                     DataType.RESTING_HEART_RATE_RECORD to restingHeartRateList,
                     DataType.SKIN_TEMPERATURE_RECORD to skinTemperatureList
                 )
-                // Если конфигурация уже получена (configState != null), запускаем экспорт для каждого типа
-                configState?.let { _ ->
+                configState?.let {
                     exports.forEach { (type, dataList) ->
                         if (dataList.isNotEmpty()) {
                             if (exportProgressMap[type] == null) {
@@ -344,20 +360,33 @@ fun AllInfoScreen(
             Box(modifier = Modifier.fillMaxSize()) {
                 CameraScannerScreen(
                     onQRCodeScanned = { result ->
-                        // Если URL невалидный, просто выключаем режим сканера
-                        if (result.isNullOrEmpty() || !isValidUrl(result)) {
+                        // Сначала сбрасываем предыдущее сообщение об ошибке
+                        warningMessage = null
+                        // Если результат пустой
+                        if (result.isNullOrEmpty()) {
+                            warningMessage = "Сканирование не дало результата."
+                            isCameraMode = false
+                        } else if (!isValidUrl(result)) {
+                            // Если строка не является валидным URL
+                            warningMessage = "Сканированный QR-код не содержит корректного URL."
                             isCameraMode = false
                         } else {
-                            sendRequestToUrl(result) { response ->
-                                try {
-                                    val config = parseConfig(response)
-                                    if (config != null) {
-                                        // Обновляем глобальное состояние и локальный state
+                            // Отправляем запрос по полученному URL
+                            sendRequestToUrl(result) { code, responseBody ->
+                                if (code !in 200..299) {
+                                    // Если код ответа не 2xx — показываем предупреждение
+                                    warningMessage = "Запрос по сканированному URL вернул ошибку: $code"
+                                } else {
+                                    // Пытаемся распарсить конфигурацию
+                                    val config = parseConfig(responseBody)
+                                    if (config == null) {
+                                        warningMessage = "Полученные данные не соответствуют ожидаемому формату."
+                                    } else {
                                         GlobalConfig.config = config
                                         configState = config
+                                        // Явно сбрасываем сообщение об ошибке, если всё успешно
+                                        warningMessage = null
                                     }
-                                } catch (e: Exception) {
-                                    // Обработка ошибки – можно добавить отображение ошибки
                                 }
                             }
                             isCameraMode = false
@@ -374,6 +403,11 @@ fun AllInfoScreen(
                 }
             }
         }
+
+        // Отображение предупреждения, если оно установлено
+        warningMessage?.let { message ->
+            WarningDialog(message = message) { warningMessage = null }
+        }
     }
 }
 
@@ -386,27 +420,36 @@ fun isValidUrl(url: String): Boolean {
 
 /**
  * Выполняет HTTP‑GET‑запрос по данному URL.
+ * Результат возвращается через onResult, содержащий HTTP-код и тело ответа.
  */
-fun sendRequestToUrl(url: String, onResult: (String) -> Unit) {
+fun sendRequestToUrl(url: String, onResult: (code: Int, body: String) -> Unit) {
     val client = OkHttpClient()
     try {
         val request = Request.Builder().url(url).build()
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                onResult("Ошибка запроса: ${e.localizedMessage}")
+                onResult(-1, "Ошибка запроса: ${e.localizedMessage}")
             }
             override fun onResponse(call: Call, response: Response) {
                 val body = response.body?.string() ?: "Пустой ответ"
-                onResult(body)
+                onResult(response.code, body)
             }
         })
     } catch (e: Exception) {
-        onResult("Некорректный URL или ошибка: ${e.localizedMessage}")
+        onResult(-1, "Некорректный URL или ошибка: ${e.localizedMessage}")
     }
 }
 
 /**
  * Парсит JSON-ответ в объект ConfigData.
+ * Ожидается, что JSON имеет формат:
+ * {
+ *   "post_here": "str",
+ *   "access_token": "str",
+ *   "refresh_token": "str",
+ *   "refresh_token_url": "str",
+ *   "token_type": "str"
+ * }
  */
 fun parseConfig(response: String): ConfigData? {
     return try {
@@ -418,17 +461,15 @@ fun parseConfig(response: String): ConfigData? {
 
 /**
  * Обновляет access_token, используя refresh_token.
- * Если обновление успешно, возвращает true и обновляет config.access_token.
+ * Если обновление успешно, возвращает true и обновляет GlobalConfig.
  */
 fun refreshAccessToken(config: ConfigData): Boolean {
     val client = OkHttpClient()
     val gson = Gson()
-    // Формируем JSON‑тело запроса для обновления токена:
     val requestBodyJson = gson.toJson(mapOf("refresh_token" to config.refresh_token))
     val jsonMediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
     val requestBody = requestBodyJson.toRequestBody(jsonMediaType)
 
-    // Формируем запрос к refresh URL:
     val request = Request.Builder()
         .url(config.refresh_token_url)
         .post(requestBody)
@@ -442,10 +483,8 @@ fun refreshAccessToken(config: ConfigData): Boolean {
             if (response.code == 200) {
                 val responseBody = response.body?.string()
                 if (!responseBody.isNullOrEmpty()) {
-                    // Предполагается, что в ответе присутствует новое поле access_token
                     val refreshedData = gson.fromJson(responseBody, ConfigData::class.java)
                     if (!refreshedData.access_token.isNullOrEmpty()) {
-                        // Обновляем токен как в глобальной конфигурации, так и в локальной переменной config.
                         GlobalConfig.config = config.copy(access_token = refreshedData.access_token)
                         return true
                     }
@@ -459,7 +498,7 @@ fun refreshAccessToken(config: ConfigData): Boolean {
 }
 
 /**
- * Экспортирует данные пачками по 50 элементов с учетом проверки HTTP‑кода ответа и обновления токена.
+ * Экспортирует данные пачками по 50 элементов с учетом проверки HTTP-кода и обновления токена.
  */
 suspend fun <T> exportDataInBatches(
     dataType: DataType,
@@ -473,19 +512,13 @@ suspend fun <T> exportDataInBatches(
     val total = dataList.size
     var completed = 0
 
-    Log.d("ExportData", "Экспортируется $total записей для типа ${dataType.typeName}")
-
-    val batches = dataList.chunked(50)
-    for (batch in batches) {
-        // Формируем конечную точку (endpoint) для экспорта:
-        val endpoint = "${config.post_here}/${dataType.typeName}"
+    dataList.chunked(50).forEach { batch ->
         val jsonBody = gson.toJson(batch)
         val requestBody = jsonBody.toRequestBody(jsonMediaType)
 
-        // Функция для формирования запроса с текущим токеном:
         fun buildRequest(token: String): Request {
             return Request.Builder()
-                .url(endpoint)
+                .url("${config.post_here}/${dataType.typeName}")
                 .post(requestBody)
                 .addHeader("Authorization", "Bearer $token")
                 .addHeader("Content-Type", "application/json")
@@ -497,16 +530,13 @@ suspend fun <T> exportDataInBatches(
 
         try {
             client.newCall(request).execute().use { response ->
-                // Если получен код не 2xx, то пробуем обработать ошибку
                 if (response.code in 200..299) {
                     Log.d("ExportData", "Пачка успешно выгружена: ${response.code}")
                     responseSuccess = true
                 } else {
-                    Log.e("ExportData", "Ошибка: получен код ${response.code} при экспорте в $endpoint")
-                    // Если ошибка 403 — пробуем обновить токен
+                    Log.e("ExportData", "Ошибка: получен код ${response.code} при экспорте")
                     if (response.code == 403) {
                         if (refreshAccessToken(config)) {
-                            // После обновления пересобираем запрос с новым токеном и повторяем попытку
                             request = buildRequest(GlobalConfig.config!!.access_token)
                             client.newCall(request).execute().use { refreshedResponse ->
                                 if (refreshedResponse.code in 200..299) {
@@ -524,13 +554,11 @@ suspend fun <T> exportDataInBatches(
             Log.e("ExportData", "Ошибка при выгрузке пачки: ${e.localizedMessage}")
         }
 
-        // Если ни первоначальный, ни повторный запрос не прошли успешно – можно здесь добавить логику повторных попыток или уведомить пользователя.
         if (!responseSuccess) {
             Log.e("ExportData", "Не удалось экспортировать пачку данных для ${dataType.typeName}")
         }
 
         completed += batch.size
-
         withContext(Dispatchers.Main) {
             onProgressUpdate(completed, total)
         }
@@ -561,7 +589,7 @@ fun CameraScannerScreen(
             },
             modifier = Modifier.fillMaxSize()
         )
-        scannedResult?.let { result: String ->
+        scannedResult?.let { result ->
             Text(
                 text = "Найден QR-код: $result",
                 modifier = Modifier.align(Alignment.BottomCenter)
