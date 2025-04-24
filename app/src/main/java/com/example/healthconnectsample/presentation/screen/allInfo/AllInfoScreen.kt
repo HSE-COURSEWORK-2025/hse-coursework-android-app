@@ -87,31 +87,30 @@ import com.google.mlkit.vision.common.InputImage
 
 // Определение enum для типов данных
 enum class DataType(val typeName: String) {
-    SLEEP_SESSION_DATA("SleepSessionData"),
-    BLOOD_OXYGEN_DATA("BloodOxygenData"),
-    HEART_RATE_RECORD("HeartRateRecord"),
-    ACTIVE_CALORIES_BURNED_RECORD("ActiveCaloriesBurnedRecord"),
-    BASAL_METABOLIC_RATE_RECORD("BasalMetabolicRateRecord"),
-    BLOOD_PRESSURE_RECORD("BloodPressureRecord"),
-    BODY_FAT_RECORD("BodyFatRecord"),
-    BODY_TEMPERATURE_RECORD("BodyTemperatureRecord"),
-    BONE_MASS_RECORD("BoneMassRecord"),
-    DISTANCE_RECORD("DistanceRecord"),
-    EXERCISE_SESSION_RECORD("ExerciseSessionRecord"),
-    HYDRATION_RECORD("HydrationRecord"),
-    SPEED_RECORD("SpeedRecord"),
-    STEPS_RECORD("StepsRecord"),
-    TOTAL_CALORIES_BURNED_RECORD("TotalCaloriesBurnedRecord"),
-    WEIGHT_RECORD("WeightRecord"),
-    BASAL_BODY_TEMPERATURE_RECORD("BasalBodyTemperatureRecord"),
-    FLOORS_CLIMBED_RECORD("FloorsClimbedRecord"),
-    INTERMENSTRUAL_BLEEDING_RECORD("IntermenstrualBleedingRecord"),
-    LEAN_BODY_MASS_RECORD("LeanBodyMassRecord"),
-    MENSTRUATION_FLOW_RECORD("MenstruationFlowRecord"),
-    NUTRITION_RECORD("NutritionRecord"),
-    POWER_RECORD("PowerRecord"),
-    RESPIRATORY_RATE_RECORD("RespiratoryRateRecord"),
-    RESTING_HEART_RATE_RECORD("RestingHeartRateRecord"),
+    SLEEP_SESSION_DATA("SleepSessionData"), BLOOD_OXYGEN_DATA("BloodOxygenData"), HEART_RATE_RECORD(
+        "HeartRateRecord"
+    ),
+    ACTIVE_CALORIES_BURNED_RECORD("ActiveCaloriesBurnedRecord"), BASAL_METABOLIC_RATE_RECORD("BasalMetabolicRateRecord"), BLOOD_PRESSURE_RECORD(
+        "BloodPressureRecord"
+    ),
+    BODY_FAT_RECORD("BodyFatRecord"), BODY_TEMPERATURE_RECORD("BodyTemperatureRecord"), BONE_MASS_RECORD(
+        "BoneMassRecord"
+    ),
+    DISTANCE_RECORD("DistanceRecord"), EXERCISE_SESSION_RECORD("ExerciseSessionRecord"), HYDRATION_RECORD(
+        "HydrationRecord"
+    ),
+    SPEED_RECORD("SpeedRecord"), STEPS_RECORD("StepsRecord"), TOTAL_CALORIES_BURNED_RECORD("TotalCaloriesBurnedRecord"), WEIGHT_RECORD(
+        "WeightRecord"
+    ),
+    BASAL_BODY_TEMPERATURE_RECORD("BasalBodyTemperatureRecord"), FLOORS_CLIMBED_RECORD("FloorsClimbedRecord"), INTERMENSTRUAL_BLEEDING_RECORD(
+        "IntermenstrualBleedingRecord"
+    ),
+    LEAN_BODY_MASS_RECORD("LeanBodyMassRecord"), MENSTRUATION_FLOW_RECORD("MenstruationFlowRecord"), NUTRITION_RECORD(
+        "NutritionRecord"
+    ),
+    POWER_RECORD("PowerRecord"), RESPIRATORY_RATE_RECORD("RespiratoryRateRecord"), RESTING_HEART_RATE_RECORD(
+        "RestingHeartRateRecord"
+    ),
     SKIN_TEMPERATURE_RECORD("SkinTemperatureRecord")
 }
 
@@ -126,6 +125,8 @@ data class ConfigData(
     val refresh_token_url: String,
     val token_type: String
 )
+
+var globalPercent = 0
 
 fun <T> exportHealthDataInBackground(
     dataList: List<T>, dataType: DataType, onProgressUpdate: (completed: Int, total: Int) -> Unit
@@ -149,8 +150,7 @@ fun WarningDialog(message: String, onDismiss: () -> Unit) {
             TextButton(onClick = onDismiss) {
                 Text(text = "OK")
             }
-        }
-    )
+        })
 }
 
 @OptIn(ExperimentalPermissionsApi::class)
@@ -251,7 +251,13 @@ fun AllInfoScreen(
         sleepSessionsListProcessed.apply {
             clear()
             sleepSessionsList.forEach { rec ->
-                add(SampleRecord(value = rec.duration.toString(), time = rec.startTime.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.duration.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0
+                    )
+                )
             }
         }
         bloodOxygenListProcessed.apply {
@@ -264,146 +270,264 @@ fun AllInfoScreen(
             clear()
             heartRateList.forEach { rec ->
                 rec.samples.forEach { sample ->
-                    add(SampleRecord(value = sample.beatsPerMinute.toString(), time = sample.time.toString(), progress = 0))
+                    add(
+                        SampleRecord(
+                            value = sample.beatsPerMinute.toString(),
+                            time = sample.time.toString(),
+                            progress = 0
+                        )
+                    )
                 }
             }
         }
         activeCaloriesListProcessed.apply {
             clear()
             activeCaloriesList.forEach { rec ->
-                add(SampleRecord(value = rec.energy.inKilocalories.toString(), time = rec.startTime.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.energy.inKilocalories.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0
+                    )
+                )
             }
         }
         basalMetabolicRateListProcessed.apply {
             clear()
             basalMetabolicRateList.forEach { rec ->
-                add(SampleRecord(value = rec.basalMetabolicRate.toString(), time = rec.time.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.basalMetabolicRate.toString(),
+                        time = rec.time.toString(),
+                        progress = 0
+                    )
+                )
             }
         }
         bloodPressureListProcessed.apply {
             clear()
             bloodPressureList.forEach { rec ->
-                add(SampleRecord(value = "${rec.systolic}/${rec.diastolic}", time = rec.time.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = "${rec.systolic}/${rec.diastolic}",
+                        time = rec.time.toString(),
+                        progress = 0
+                    )
+                )
             }
         }
         bodyFatListProcessed.apply {
             clear()
             bodyFatList.forEach { rec ->
-                add(SampleRecord(value = rec.percentage.toString(), time = rec.time.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.percentage.toString(), time = rec.time.toString(), progress = 0
+                    )
+                )
             }
         }
         bodyTemperatureListProcessed.apply {
             clear()
             bodyTemperatureList.forEach { rec ->
-                add(SampleRecord(value = rec.temperature.toString(), time = rec.time.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.temperature.toString(), time = rec.time.toString(), progress = 0
+                    )
+                )
             }
         }
         boneMassListProcessed.apply {
             clear()
             boneMassList.forEach { rec ->
-                add(SampleRecord(value = rec.mass.inKilograms.toString(), time = rec.time.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.mass.inKilograms.toString(),
+                        time = rec.time.toString(),
+                        progress = 0
+                    )
+                )
             }
         }
         distanceListProcessed.apply {
             clear()
             distanceList.forEach { rec ->
-                add(SampleRecord(value = rec.distance.toString(), time = rec.startTime.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.distance.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0
+                    )
+                )
             }
         }
         exerciseSessionListProcessed.apply {
             clear()
             exerciseSessionList.forEach { rec ->
-                add(SampleRecord(value = rec.title.toString(), time = rec.startTime.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.title.toString(), time = rec.startTime.toString(), progress = 0
+                    )
+                )
             }
         }
         hydrationListProcessed.apply {
             clear()
             hydrationList.forEach { rec ->
-                add(SampleRecord(value = rec.volume.toString(), time = rec.startTime.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.volume.toString(), time = rec.startTime.toString(), progress = 0
+                    )
+                )
             }
         }
         speedListProcessed.apply {
             clear()
             speedList.forEach { rec ->
-                add(SampleRecord(value = rec.samples.toString(), time = rec.startTime.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.samples.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0
+                    )
+                )
             }
         }
         stepsListProcessed.apply {
             clear()
             stepsList.forEach { rec ->
-                add(SampleRecord(value = rec.count.toString(), time = rec.startTime.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.count.toString(), time = rec.startTime.toString(), progress = 0
+                    )
+                )
             }
         }
         totalCaloriesBurnedListProcessed.apply {
             clear()
             totalCaloriesBurnedList.forEach { rec ->
-                add(SampleRecord(value = rec.energy.inKilocalories.toString(), time = rec.startTime.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.energy.inKilocalories.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0
+                    )
+                )
             }
         }
         weightListProcessed.apply {
             clear()
             weightList.forEach { rec ->
-                add(SampleRecord(value = rec.weight.toString(), time = rec.time.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.weight.toString(), time = rec.time.toString(), progress = 0
+                    )
+                )
             }
         }
         basalBodyTemperatureListProcessed.apply {
             clear()
             basalBodyTemperatureList.forEach { rec ->
-                add(SampleRecord(value = rec.temperature.toString(), time = rec.time.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.temperature.toString(), time = rec.time.toString(), progress = 0
+                    )
+                )
             }
         }
         floorsClimbedListProcessed.apply {
             clear()
             floorsClimbedList.forEach { rec ->
-                add(SampleRecord(value = rec.floors.toString(), time = rec.startTime.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.floors.toString(), time = rec.startTime.toString(), progress = 0
+                    )
+                )
             }
         }
         intermenstrualBleedingListProcessed.apply {
             clear()
             intermenstrualBleedingList.forEach { rec ->
-                add(SampleRecord(value = rec.zoneOffset.toString(), time = rec.time.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.zoneOffset.toString(), time = rec.time.toString(), progress = 0
+                    )
+                )
             }
         }
         leanBodyMassListProcessed.apply {
             clear()
             leanBodyMassList.forEach { rec ->
-                add(SampleRecord(value = rec.mass.toString(), time = rec.time.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.mass.toString(), time = rec.time.toString(), progress = 0
+                    )
+                )
             }
         }
         menstruationFlowListProcessed.apply {
             clear()
             menstruationFlowList.forEach { rec ->
-                add(SampleRecord(value = rec.flow.toString(), time = rec.time.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.flow.toString(), time = rec.time.toString(), progress = 0
+                    )
+                )
             }
         }
         nutritionListProcessed.apply {
             clear()
             nutritionList.forEach { rec ->
-                add(SampleRecord(value = rec.energy.toString(), time = rec.startTime.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.energy.toString(), time = rec.startTime.toString(), progress = 0
+                    )
+                )
             }
         }
         powerListProcessed.apply {
             clear()
             powerList.forEach { rec ->
-                add(SampleRecord(value = rec.samples.toString(), time = rec.startTime.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.samples.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0
+                    )
+                )
             }
         }
         respiratoryRateListProcessed.apply {
             clear()
             respiratoryRateList.forEach { rec ->
-                add(SampleRecord(value = rec.rate.toString(), time = rec.time.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.rate.toString(), time = rec.time.toString(), progress = 0
+                    )
+                )
             }
         }
         restingHeartRateListProcessed.apply {
             clear()
             restingHeartRateList.forEach { rec ->
-                add(SampleRecord(value = rec.beatsPerMinute.toString(), time = rec.time.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.beatsPerMinute.toString(),
+                        time = rec.time.toString(),
+                        progress = 0
+                    )
+                )
             }
         }
         skinTemperatureListProcessed.apply {
             clear()
             skinTemperatureList.forEach { rec ->
-                add(SampleRecord(value = rec.baseline?.inCelsius.toString(), time = rec.startTime.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.baseline?.inCelsius.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0
+                    )
+                )
             }
         }
     }
@@ -510,16 +634,27 @@ fun AllInfoScreen(
                     // Individual progress bars
                     exports.forEach { (type, dataList) ->
                         if (dataList.isNotEmpty()) {
+                            val (completed, total) = exportProgressMap[type] ?: (0 to dataList.size)
+                            var totalCompleted = exportProgressMap.values.sumOf { it.first }
+                            val totalTotal = exportProgressMap.values.sumOf { it.second }
+                            globalPercent =
+                                if (totalTotal > 0) (totalCompleted * 100 / totalTotal) else 0
+                            globalPercent = if (globalPercent < 100) (globalPercent + 1) else globalPercent
+                            exports.forEach { (_, dataList) ->
+                                dataList.forEach { rec ->
+
+
+                                    rec.progress = globalPercent
+                                }
+                            }
+
+
                             if (exportProgressMap[type] == null) {
                                 exportHealthDataInBackground(dataList, type) { completed, total ->
                                     exportProgressMap[type] = completed to total
                                 }
                             }
-                            val (completed, total) = exportProgressMap[type] ?: (0 to dataList.size)
-                            val percent = if (total > 0) (completed * 100 / total) else 0
-                            dataList.forEach { rec ->
-                                rec.progress = percent
-                            }
+
 
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 Text(
@@ -546,12 +681,7 @@ fun AllInfoScreen(
                     if (exportProgressMap.isNotEmpty()) {
                         val totalCompleted = exportProgressMap.values.sumOf { it.first }
                         val totalTotal = exportProgressMap.values.sumOf { it.second }
-                        val globalPercent  = if (totalTotal > 0) (totalCompleted * 100 / totalTotal) else 0
-                        exports.forEach { (_, dataList) ->
-                            dataList.forEach { rec ->
-                                rec.progress = globalPercent
-                            }
-                        }
+
 
                         Column(modifier = Modifier.fillMaxWidth()) {
                             Text(
@@ -562,8 +692,7 @@ fun AllInfoScreen(
                             )
                             LinearProgressIndicator(
 //                                progress = if (totalTotal > 0) totalCompleted.toFloat() / totalTotal else 0f,
-                                progress = globalPercent / 100f,
-                                modifier = Modifier.fillMaxWidth()
+                                progress = globalPercent / 100f, modifier = Modifier.fillMaxWidth()
                             )
                             Text(
                                 text = "Выгружено $totalCompleted из $totalTotal",
@@ -592,11 +721,13 @@ fun AllInfoScreen(
                         } else {
                             sendRequestToUrl(result) { code, responseBody ->
                                 if (code !in 200..299) {
-                                    warningMessage = "Запрос по сканированному URL вернул ошибку: $code"
+                                    warningMessage =
+                                        "Запрос по сканированному URL вернул ошибку: $code"
                                 } else {
                                     val config = parseConfig(responseBody)
                                     if (config == null) {
-                                        warningMessage = "Полученные данные не соответствуют ожидаемому формату."
+                                        warningMessage =
+                                            "Полученные данные не соответствуют ожидаемому формату."
                                     } else {
                                         GlobalConfig.config = config
                                         configState = config
@@ -606,8 +737,7 @@ fun AllInfoScreen(
                             }
                             isCameraMode = false
                         }
-                    }
-                )
+                    })
                 Button(
                     onClick = { isCameraMode = false },
                     modifier = Modifier
@@ -638,6 +768,7 @@ fun sendRequestToUrl(url: String, onResult: (code: Int, body: String) -> Unit) {
             override fun onFailure(call: Call, e: IOException) {
                 onResult(-1, "Ошибка запроса: ${e.localizedMessage}")
             }
+
             override fun onResponse(call: Call, response: Response) {
                 val body = response.body?.string() ?: "Пустой ответ"
                 onResult(response.code, body)
@@ -662,17 +793,15 @@ fun refreshAccessToken(config: ConfigData): Boolean {
     val requestBodyJson = gson.toJson(mapOf("refresh_token" to config.refresh_token))
     val jsonMediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
     val requestBody = requestBodyJson.toRequestBody(jsonMediaType)
-    val request = Request.Builder()
-        .url(config.refresh_token_url)
-        .post(requestBody)
+    val request = Request.Builder().url(config.refresh_token_url).post(requestBody)
         .addHeader("accept", "application/json")
         .addHeader("Authorization", "Bearer ${config.access_token}")
-        .addHeader("Content-Type", "application/json")
-        .build()
+        .addHeader("Content-Type", "application/json").build()
     try {
         client.newCall(request).execute().use { response ->
             if (response.code == 200) {
-                val refreshedData = response.body?.string()?.let { Gson().fromJson(it, ConfigData::class.java) }
+                val refreshedData =
+                    response.body?.string()?.let { Gson().fromJson(it, ConfigData::class.java) }
                 if (refreshedData != null && refreshedData.access_token.isNotEmpty()) {
                     GlobalConfig.config = config.copy(access_token = refreshedData.access_token)
                     return true
@@ -698,12 +827,11 @@ suspend fun <T> exportDataInBatches(
     var completed = 0
     dataList.chunked(50).forEach { batch ->
         val requestBody = gson.toJson(batch).toRequestBody(jsonMediaType)
-        fun buildRequest(token: String) = Request.Builder()
-            .url("${config.post_here}/${dataType.typeName}")
-            .post(requestBody)
-            .addHeader("Authorization", "Bearer $token")
-            .addHeader("Content-Type", "application/json")
-            .build()
+        fun buildRequest(token: String) =
+            Request.Builder().url("${config.post_here}/${dataType.typeName}").post(requestBody)
+                .addHeader("Authorization", "Bearer $token")
+                .addHeader("Content-Type", "application/json").build()
+
         var request = buildRequest(config.access_token)
         var responseSuccess = false
         try {
@@ -711,11 +839,12 @@ suspend fun <T> exportDataInBatches(
                 if (response.code in 200..299) {
                     responseSuccess = true
                 } else if (response.code == 403 && refreshAccessToken(config)) {
-                    client.newCall(buildRequest(GlobalConfig.config!!.access_token)).execute().use { resp2 ->
-                        if (resp2.code in 200..299) {
-                            responseSuccess = true
+                    client.newCall(buildRequest(GlobalConfig.config!!.access_token)).execute()
+                        .use { resp2 ->
+                            if (resp2.code in 200..299) {
+                                responseSuccess = true
+                            }
                         }
-                    }
                 }
             }
         } catch (e: Exception) {
@@ -744,22 +873,18 @@ fun CameraScannerScreen(onQRCodeScanned: (String?) -> Unit) {
                         }
                     }
                 }
-            },
-            modifier = Modifier.fillMaxSize()
+            }, modifier = Modifier.fillMaxSize()
         )
         scannedResult?.let {
             Text(
-                text = "Найден QR-код: $it",
-                modifier = Modifier.align(Alignment.BottomCenter)
+                text = "Найден QR-код: $it", modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
     }
 }
 
 private fun bindCameraUseCases(
-    previewView: PreviewView,
-    lifecycleOwner: LifecycleOwner?,
-    onBarcodeFound: (String?) -> Unit
+    previewView: PreviewView, lifecycleOwner: LifecycleOwner?, onBarcodeFound: (String?) -> Unit
 ) {
     val context = previewView.context
     val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
@@ -768,19 +893,15 @@ private fun bindCameraUseCases(
         val preview = Preview.Builder().build().also {
             it.setSurfaceProvider(previewView.surfaceProvider)
         }
-        val imageAnalysis = ImageAnalysis.Builder()
-            .setBackpressureStrategy(STRATEGY_KEEP_ONLY_LATEST)
-            .build()
+        val imageAnalysis =
+            ImageAnalysis.Builder().setBackpressureStrategy(STRATEGY_KEEP_ONLY_LATEST).build()
         imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(context)) { imageProxy ->
             processImageProxy(imageProxy, onBarcodeFound)
         }
         try {
             cameraProvider.unbindAll()
             cameraProvider.bindToLifecycle(
-                lifecycleOwner!!,
-                CameraSelector.DEFAULT_BACK_CAMERA,
-                preview,
-                imageAnalysis
+                lifecycleOwner!!, CameraSelector.DEFAULT_BACK_CAMERA, preview, imageAnalysis
             )
         } catch (exc: Exception) {
             exc.printStackTrace()
@@ -789,24 +910,20 @@ private fun bindCameraUseCases(
 }
 
 private fun processImageProxy(
-    imageProxy: ImageProxy,
-    onBarcodeFound: (String?) -> Unit
+    imageProxy: ImageProxy, onBarcodeFound: (String?) -> Unit
 ) {
     val mediaImage = imageProxy.image
     if (mediaImage != null) {
         val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
         val scanner = BarcodeScanning.getClient()
-        scanner.process(image)
-            .addOnSuccessListener { barcodes ->
-                onBarcodeFound(barcodes.firstOrNull()?.rawValue)
-            }
-            .addOnFailureListener {
-                it.printStackTrace()
-                onBarcodeFound(null)
-            }
-            .addOnCompleteListener {
-                imageProxy.close()
-            }
+        scanner.process(image).addOnSuccessListener { barcodes ->
+            onBarcodeFound(barcodes.firstOrNull()?.rawValue)
+        }.addOnFailureListener {
+            it.printStackTrace()
+            onBarcodeFound(null)
+        }.addOnCompleteListener {
+            imageProxy.close()
+        }
     } else {
         imageProxy.close()
     }
