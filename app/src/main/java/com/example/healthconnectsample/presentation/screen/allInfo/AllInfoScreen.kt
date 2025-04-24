@@ -45,13 +45,13 @@ import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -64,32 +64,8 @@ import androidx.lifecycle.LifecycleOwner
 import com.example.healthconnectsample.R
 import com.example.healthconnectsample.data.SleepSessionData
 import com.example.healthconnectsample.data.BloodOxygenData
+import androidx.health.connect.client.records.*
 import androidx.health.connect.client.permission.HealthPermission
-import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
-import androidx.health.connect.client.records.BasalMetabolicRateRecord
-import androidx.health.connect.client.records.BloodPressureRecord
-import androidx.health.connect.client.records.BodyFatRecord
-import androidx.health.connect.client.records.BodyTemperatureRecord
-import androidx.health.connect.client.records.BoneMassRecord
-import androidx.health.connect.client.records.DistanceRecord
-import androidx.health.connect.client.records.ExerciseSessionRecord
-import androidx.health.connect.client.records.HeartRateRecord
-import androidx.health.connect.client.records.HydrationRecord
-import androidx.health.connect.client.records.SleepSessionRecord
-import androidx.health.connect.client.records.SpeedRecord
-import androidx.health.connect.client.records.StepsRecord
-import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
-import androidx.health.connect.client.records.WeightRecord
-import androidx.health.connect.client.records.BasalBodyTemperatureRecord
-import androidx.health.connect.client.records.FloorsClimbedRecord
-import androidx.health.connect.client.records.IntermenstrualBleedingRecord
-import androidx.health.connect.client.records.LeanBodyMassRecord
-import androidx.health.connect.client.records.MenstruationFlowRecord
-import androidx.health.connect.client.records.NutritionRecord
-import androidx.health.connect.client.records.PowerRecord
-import androidx.health.connect.client.records.RespiratoryRateRecord
-import androidx.health.connect.client.records.RestingHeartRateRecord
-import androidx.health.connect.client.records.SkinTemperatureRecord
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.gson.Gson
@@ -111,30 +87,31 @@ import com.google.mlkit.vision.common.InputImage
 
 // Определение enum для типов данных
 enum class DataType(val typeName: String) {
-    SLEEP_SESSION_DATA("SleepSessionData"), BLOOD_OXYGEN_DATA("BloodOxygenData"), HEART_RATE_RECORD(
-        "HeartRateRecord"
-    ),
-    ACTIVE_CALORIES_BURNED_RECORD("ActiveCaloriesBurnedRecord"), BASAL_METABOLIC_RATE_RECORD("BasalMetabolicRateRecord"), BLOOD_PRESSURE_RECORD(
-        "BloodPressureRecord"
-    ),
-    BODY_FAT_RECORD("BodyFatRecord"), BODY_TEMPERATURE_RECORD("BodyTemperatureRecord"), BONE_MASS_RECORD(
-        "BoneMassRecord"
-    ),
-    DISTANCE_RECORD("DistanceRecord"), EXERCISE_SESSION_RECORD("ExerciseSessionRecord"), HYDRATION_RECORD(
-        "HydrationRecord"
-    ),
-    SPEED_RECORD("SpeedRecord"), STEPS_RECORD("StepsRecord"), TOTAL_CALORIES_BURNED_RECORD("TotalCaloriesBurnedRecord"), WEIGHT_RECORD(
-        "WeightRecord"
-    ),
-    BASAL_BODY_TEMPERATURE_RECORD("BasalBodyTemperatureRecord"), FLOORS_CLIMBED_RECORD("FloorsClimbedRecord"), INTERMENSTRUAL_BLEEDING_RECORD(
-        "IntermenstrualBleedingRecord"
-    ),
-    LEAN_BODY_MASS_RECORD("LeanBodyMassRecord"), MENSTRUATION_FLOW_RECORD("MenstruationFlowRecord"), NUTRITION_RECORD(
-        "NutritionRecord"
-    ),
-    POWER_RECORD("PowerRecord"), RESPIRATORY_RATE_RECORD("RespiratoryRateRecord"), RESTING_HEART_RATE_RECORD(
-        "RestingHeartRateRecord"
-    ),
+    SLEEP_SESSION_DATA("SleepSessionData"),
+    BLOOD_OXYGEN_DATA("BloodOxygenData"),
+    HEART_RATE_RECORD("HeartRateRecord"),
+    ACTIVE_CALORIES_BURNED_RECORD("ActiveCaloriesBurnedRecord"),
+    BASAL_METABOLIC_RATE_RECORD("BasalMetabolicRateRecord"),
+    BLOOD_PRESSURE_RECORD("BloodPressureRecord"),
+    BODY_FAT_RECORD("BodyFatRecord"),
+    BODY_TEMPERATURE_RECORD("BodyTemperatureRecord"),
+    BONE_MASS_RECORD("BoneMassRecord"),
+    DISTANCE_RECORD("DistanceRecord"),
+    EXERCISE_SESSION_RECORD("ExerciseSessionRecord"),
+    HYDRATION_RECORD("HydrationRecord"),
+    SPEED_RECORD("SpeedRecord"),
+    STEPS_RECORD("StepsRecord"),
+    TOTAL_CALORIES_BURNED_RECORD("TotalCaloriesBurnedRecord"),
+    WEIGHT_RECORD("WeightRecord"),
+    BASAL_BODY_TEMPERATURE_RECORD("BasalBodyTemperatureRecord"),
+    FLOORS_CLIMBED_RECORD("FloorsClimbedRecord"),
+    INTERMENSTRUAL_BLEEDING_RECORD("IntermenstrualBleedingRecord"),
+    LEAN_BODY_MASS_RECORD("LeanBodyMassRecord"),
+    MENSTRUATION_FLOW_RECORD("MenstruationFlowRecord"),
+    NUTRITION_RECORD("NutritionRecord"),
+    POWER_RECORD("PowerRecord"),
+    RESPIRATORY_RATE_RECORD("RespiratoryRateRecord"),
+    RESTING_HEART_RATE_RECORD("RestingHeartRateRecord"),
     SKIN_TEMPERATURE_RECORD("SkinTemperatureRecord")
 }
 
@@ -142,7 +119,6 @@ object GlobalConfig {
     var config: ConfigData? = null
 }
 
-// Модель для конфигурационных данных, получаемых по URL из QR‑кода.
 data class ConfigData(
     val post_here: String,
     val access_token: String,
@@ -151,7 +127,6 @@ data class ConfigData(
     val token_type: String
 )
 
-// Функция для экспорта данных в фоне для переданного списка
 fun <T> exportHealthDataInBackground(
     dataList: List<T>, dataType: DataType, onProgressUpdate: (completed: Int, total: Int) -> Unit
 ) {
@@ -162,14 +137,8 @@ fun <T> exportHealthDataInBackground(
     }
 }
 
-data class SampleRecord(
-    val value: String, val time: String
-)
+data class SampleRecord(val value: String, val time: String, var progress: Number)
 
-
-/**
- * Показывает диалоговое окно с предупреждением
- */
 @Composable
 fun WarningDialog(message: String, onDismiss: () -> Unit) {
     AlertDialog(
@@ -180,7 +149,8 @@ fun WarningDialog(message: String, onDismiss: () -> Unit) {
             TextButton(onClick = onDismiss) {
                 Text(text = "OK")
             }
-        })
+        }
+    )
 }
 
 @OptIn(ExperimentalPermissionsApi::class)
@@ -221,6 +191,7 @@ fun AllInfoScreen(
 ) {
     val context = LocalContext.current
 
+    // Lists of processed sample records
     val sleepSessionsListProcessed = remember { mutableStateListOf<SampleRecord>() }
     val bloodOxygenListProcessed = remember { mutableStateListOf<SampleRecord>() }
     val heartRateListProcessed = remember { mutableStateListOf<SampleRecord>() }
@@ -247,7 +218,6 @@ fun AllInfoScreen(
     val respiratoryRateListProcessed = remember { mutableStateListOf<SampleRecord>() }
     val restingHeartRateListProcessed = remember { mutableStateListOf<SampleRecord>() }
     val skinTemperatureListProcessed = remember { mutableStateListOf<SampleRecord>() }
-
 
     LaunchedEffect(
         sleepSessionsList,
@@ -277,209 +247,173 @@ fun AllInfoScreen(
         restingHeartRateList,
         skinTemperatureList
     ) {
-        // SleepSessionData
-        sleepSessionsListProcessed.clear()
-        sleepSessionsList.forEach { rec ->
-            sleepSessionsListProcessed.add(
-                SampleRecord(value = rec.duration.toString(), time = rec.startTime.toString())
-            )
-        }
-        // BloodOxygenData
-        bloodOxygenListProcessed.clear()
-        bloodOxygenList.forEach { rec ->
-            bloodOxygenListProcessed.add(
-                SampleRecord(value = rec.value, time = rec.startTime.toString())
-            )
-        }
-        // HeartRateRecord
-        heartRateListProcessed.clear()
-        heartRateList.forEach { record ->
-            record.samples.forEach { sample ->
-                heartRateListProcessed.add(
-                    SampleRecord(
-                        value = sample.beatsPerMinute.toString(), time = sample.time.toString()
-                    )
-                )
+        // Process each record type into SampleRecord lists with initial progress=0
+        sleepSessionsListProcessed.apply {
+            clear()
+            sleepSessionsList.forEach { rec ->
+                add(SampleRecord(value = rec.duration.toString(), time = rec.startTime.toString(), progress = 0))
             }
         }
-        // ActiveCaloriesBurnedRecord
-        activeCaloriesListProcessed.clear()
-        activeCaloriesList.forEach { rec ->
-            activeCaloriesListProcessed.add(
-                SampleRecord(
-                    value = rec.energy.inKilocalories.toString(), time = rec.startTime.toString()
-                )
-            )
+        bloodOxygenListProcessed.apply {
+            clear()
+            bloodOxygenList.forEach { rec ->
+                add(SampleRecord(value = rec.value, time = rec.startTime.toString(), progress = 0))
+            }
         }
-        // BasalMetabolicRateRecord
-        basalMetabolicRateListProcessed.clear()
-        basalMetabolicRateList.forEach { rec ->
-            basalMetabolicRateListProcessed.add(
-                SampleRecord(value = rec.basalMetabolicRate.toString(), time = rec.time.toString())
-            )
+        heartRateListProcessed.apply {
+            clear()
+            heartRateList.forEach { rec ->
+                rec.samples.forEach { sample ->
+                    add(SampleRecord(value = sample.beatsPerMinute.toString(), time = sample.time.toString(), progress = 0))
+                }
+            }
         }
-        // BloodPressureRecord
-        bloodPressureListProcessed.clear()
-        bloodPressureList.forEach { rec ->
-            bloodPressureListProcessed.add(
-                SampleRecord(value = "${rec.systolic}/${rec.diastolic}", time = rec.time.toString())
-            )
+        activeCaloriesListProcessed.apply {
+            clear()
+            activeCaloriesList.forEach { rec ->
+                add(SampleRecord(value = rec.energy.inKilocalories.toString(), time = rec.startTime.toString(), progress = 0))
+            }
         }
-        // BodyFatRecord
-        bodyFatListProcessed.clear()
-        bodyFatList.forEach { rec ->
-            bodyFatListProcessed.add(
-                SampleRecord(value = rec.percentage.toString(), time = rec.time.toString())
-            )
+        basalMetabolicRateListProcessed.apply {
+            clear()
+            basalMetabolicRateList.forEach { rec ->
+                add(SampleRecord(value = rec.basalMetabolicRate.toString(), time = rec.time.toString(), progress = 0))
+            }
         }
-        // BodyTemperatureRecord
-        bodyTemperatureListProcessed.clear()
-        bodyTemperatureList.forEach { rec ->
-            bodyTemperatureListProcessed.add(
-                SampleRecord(value = rec.temperature.toString(), time = rec.time.toString())
-            )
+        bloodPressureListProcessed.apply {
+            clear()
+            bloodPressureList.forEach { rec ->
+                add(SampleRecord(value = "${rec.systolic}/${rec.diastolic}", time = rec.time.toString(), progress = 0))
+            }
         }
-        // BoneMassRecord
-        boneMassListProcessed.clear()
-        boneMassList.forEach { rec ->
-            boneMassListProcessed.add(
-                SampleRecord(value = rec.mass.inKilograms.toString(), time = rec.time.toString())
-            )
+        bodyFatListProcessed.apply {
+            clear()
+            bodyFatList.forEach { rec ->
+                add(SampleRecord(value = rec.percentage.toString(), time = rec.time.toString(), progress = 0))
+            }
         }
-        // DistanceRecord
-        distanceListProcessed.clear()
-        distanceList.forEach { rec ->
-            distanceListProcessed.add(
-                SampleRecord(value = rec.distance.toString(), time = rec.startTime.toString())
-            )
+        bodyTemperatureListProcessed.apply {
+            clear()
+            bodyTemperatureList.forEach { rec ->
+                add(SampleRecord(value = rec.temperature.toString(), time = rec.time.toString(), progress = 0))
+            }
         }
-        // ExerciseSessionRecord
-        exerciseSessionListProcessed.clear()
-        exerciseSessionList.forEach { rec ->
-            exerciseSessionListProcessed.add(
-                SampleRecord(value = rec.title.toString(), time = rec.startTime.toString())
-            )
+        boneMassListProcessed.apply {
+            clear()
+            boneMassList.forEach { rec ->
+                add(SampleRecord(value = rec.mass.inKilograms.toString(), time = rec.time.toString(), progress = 0))
+            }
         }
-        // HydrationRecord
-        hydrationListProcessed.clear()
-        hydrationList.forEach { rec ->
-            hydrationListProcessed.add(
-                SampleRecord(value = rec.volume.toString(), time = rec.startTime.toString())
-            )
+        distanceListProcessed.apply {
+            clear()
+            distanceList.forEach { rec ->
+                add(SampleRecord(value = rec.distance.toString(), time = rec.startTime.toString(), progress = 0))
+            }
         }
-        // SpeedRecord
-        speedListProcessed.clear()
-        speedList.forEach { rec ->
-            speedListProcessed.add(
-                SampleRecord(value = rec.samples.toString(), time = rec.startTime.toString())
-            )
+        exerciseSessionListProcessed.apply {
+            clear()
+            exerciseSessionList.forEach { rec ->
+                add(SampleRecord(value = rec.title.toString(), time = rec.startTime.toString(), progress = 0))
+            }
         }
-        // StepsRecord
-        stepsListProcessed.clear()
-        stepsList.forEach { rec ->
-            stepsListProcessed.add(
-                SampleRecord(value = rec.count.toString(), time = rec.startTime.toString())
-            )
+        hydrationListProcessed.apply {
+            clear()
+            hydrationList.forEach { rec ->
+                add(SampleRecord(value = rec.volume.toString(), time = rec.startTime.toString(), progress = 0))
+            }
         }
-        // TotalCaloriesBurnedRecord
-        totalCaloriesBurnedListProcessed.clear()
-        totalCaloriesBurnedList.forEach { rec ->
-            totalCaloriesBurnedListProcessed.add(
-                SampleRecord(
-                    value = rec.energy.inKilocalories.toString(), time = rec.startTime.toString()
-                )
-            )
+        speedListProcessed.apply {
+            clear()
+            speedList.forEach { rec ->
+                add(SampleRecord(value = rec.samples.toString(), time = rec.startTime.toString(), progress = 0))
+            }
         }
-        // WeightRecord
-        weightListProcessed.clear()
-        weightList.forEach { rec ->
-            weightListProcessed.add(
-                SampleRecord(value = rec.weight.toString(), time = rec.time.toString())
-            )
+        stepsListProcessed.apply {
+            clear()
+            stepsList.forEach { rec ->
+                add(SampleRecord(value = rec.count.toString(), time = rec.startTime.toString(), progress = 0))
+            }
         }
-        // BasalBodyTemperatureRecord
-        basalBodyTemperatureListProcessed.clear()
-        basalBodyTemperatureList.forEach { rec ->
-            basalBodyTemperatureListProcessed.add(
-                SampleRecord(value = rec.temperature.toString(), time = rec.time.toString())
-            )
+        totalCaloriesBurnedListProcessed.apply {
+            clear()
+            totalCaloriesBurnedList.forEach { rec ->
+                add(SampleRecord(value = rec.energy.inKilocalories.toString(), time = rec.startTime.toString(), progress = 0))
+            }
         }
-        // FloorsClimbedRecord
-        floorsClimbedListProcessed.clear()
-        floorsClimbedList.forEach { rec ->
-            floorsClimbedListProcessed.add(
-                SampleRecord(value = rec.floors.toString(), time = rec.startTime.toString())
-            )
+        weightListProcessed.apply {
+            clear()
+            weightList.forEach { rec ->
+                add(SampleRecord(value = rec.weight.toString(), time = rec.time.toString(), progress = 0))
+            }
         }
-        // IntermenstrualBleedingRecord
-        intermenstrualBleedingListProcessed.clear()
-        intermenstrualBleedingList.forEach { rec ->
-            intermenstrualBleedingListProcessed.add(
-                SampleRecord(value = rec.zoneOffset.toString(), time = rec.time.toString())
-            )
+        basalBodyTemperatureListProcessed.apply {
+            clear()
+            basalBodyTemperatureList.forEach { rec ->
+                add(SampleRecord(value = rec.temperature.toString(), time = rec.time.toString(), progress = 0))
+            }
         }
-        // LeanBodyMassRecord
-        leanBodyMassListProcessed.clear()
-        leanBodyMassList.forEach { rec ->
-            leanBodyMassListProcessed.add(
-                SampleRecord(value = rec.mass.toString(), time = rec.time.toString())
-            )
+        floorsClimbedListProcessed.apply {
+            clear()
+            floorsClimbedList.forEach { rec ->
+                add(SampleRecord(value = rec.floors.toString(), time = rec.startTime.toString(), progress = 0))
+            }
         }
-        // MenstruationFlowRecord
-        menstruationFlowListProcessed.clear()
-        menstruationFlowList.forEach { rec ->
-            menstruationFlowListProcessed.add(
-                SampleRecord(value = rec.flow.toString(), time = rec.time.toString())
-            )
+        intermenstrualBleedingListProcessed.apply {
+            clear()
+            intermenstrualBleedingList.forEach { rec ->
+                add(SampleRecord(value = rec.zoneOffset.toString(), time = rec.time.toString(), progress = 0))
+            }
         }
-        // NutritionRecord
-        nutritionListProcessed.clear()
-        nutritionList.forEach { rec ->
-            nutritionListProcessed.add(
-                SampleRecord(value = rec.energy.toString(), time = rec.startTime.toString())
-            )
+        leanBodyMassListProcessed.apply {
+            clear()
+            leanBodyMassList.forEach { rec ->
+                add(SampleRecord(value = rec.mass.toString(), time = rec.time.toString(), progress = 0))
+            }
         }
-        // PowerRecord
-        powerListProcessed.clear()
-        powerList.forEach { rec ->
-            powerListProcessed.add(
-                SampleRecord(value = rec.samples.toString(), time = rec.startTime.toString())
-            )
+        menstruationFlowListProcessed.apply {
+            clear()
+            menstruationFlowList.forEach { rec ->
+                add(SampleRecord(value = rec.flow.toString(), time = rec.time.toString(), progress = 0))
+            }
         }
-        // RespiratoryRateRecord
-        respiratoryRateListProcessed.clear()
-        respiratoryRateList.forEach { rec ->
-            respiratoryRateListProcessed.add(
-                SampleRecord(value = rec.rate.toString(), time = rec.time.toString())
-            )
+        nutritionListProcessed.apply {
+            clear()
+            nutritionList.forEach { rec ->
+                add(SampleRecord(value = rec.energy.toString(), time = rec.startTime.toString(), progress = 0))
+            }
         }
-        // RestingHeartRateRecord
-        restingHeartRateListProcessed.clear()
-        restingHeartRateList.forEach { rec ->
-            restingHeartRateListProcessed.add(
-                SampleRecord(value = rec.beatsPerMinute.toString(), time = rec.time.toString())
-            )
+        powerListProcessed.apply {
+            clear()
+            powerList.forEach { rec ->
+                add(SampleRecord(value = rec.samples.toString(), time = rec.startTime.toString(), progress = 0))
+            }
         }
-        // SkinTemperatureRecord
-        skinTemperatureListProcessed.clear()
-        skinTemperatureList.forEach { rec ->
-            skinTemperatureListProcessed.add(
-                SampleRecord(
-                    value = rec.baseline?.inCelsius.toString(), time = rec.startTime.toString()
-                )
-            )
+        respiratoryRateListProcessed.apply {
+            clear()
+            respiratoryRateList.forEach { rec ->
+                add(SampleRecord(value = rec.rate.toString(), time = rec.time.toString(), progress = 0))
+            }
+        }
+        restingHeartRateListProcessed.apply {
+            clear()
+            restingHeartRateList.forEach { rec ->
+                add(SampleRecord(value = rec.beatsPerMinute.toString(), time = rec.time.toString(), progress = 0))
+            }
+        }
+        skinTemperatureListProcessed.apply {
+            clear()
+            skinTemperatureList.forEach { rec ->
+                add(SampleRecord(value = rec.baseline?.inCelsius.toString(), time = rec.startTime.toString(), progress = 0))
+            }
         }
     }
 
-
-    // Локальное состояние для конфигурации – после успешного сканирования обновится и инициирует экспорт
+    // State for scanned config and export progress
     var configState by remember { mutableStateOf<ConfigData?>(null) }
-    // Состояние для отслеживания прогресса экспорта для каждого типа
     val exportProgressMap = remember { mutableStateMapOf<DataType, Pair<Int, Int>>() }
-    // Состояние для отображения предупреждений
     var warningMessage by remember { mutableStateOf<String?>(null) }
 
-    // Обработка ошибок для загрузки данных Health Connect
+    // Handle UI state changes and errors
     val errorId = rememberSaveable { mutableStateOf(UUID.randomUUID()) }
     LaunchedEffect(uiState) {
         if (uiState is SleepSessionViewModel.UiState.Uninitialized) {
@@ -491,10 +425,7 @@ fun AllInfoScreen(
         }
     }
 
-    // Состояния для режима сканера
     var isCameraMode by remember { mutableStateOf(false) }
-
-    // Состояние разрешения для камеры
     val cameraPermissionState = rememberPermissionState(permission = Manifest.permission.CAMERA)
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -505,7 +436,7 @@ fun AllInfoScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Кнопки для запроса разрешений и открытия камеры
+            // Permissions and camera buttons
             if (!permissionsGranted) {
                 Button(onClick = { onPermissionsLaunch(permissions) }) {
                     Text(text = stringResource(R.string.permissions_button_label))
@@ -542,8 +473,7 @@ fun AllInfoScreen(
                 }
             }
 
-
-            // Секция для progressbar-ов для каждого типа экспорта
+            // Progress bars for each data type
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -577,6 +507,7 @@ fun AllInfoScreen(
                     DataType.SKIN_TEMPERATURE_RECORD to skinTemperatureListProcessed
                 )
                 configState?.let {
+                    // Individual progress bars
                     exports.forEach { (type, dataList) ->
                         if (dataList.isNotEmpty()) {
                             if (exportProgressMap[type] == null) {
@@ -584,7 +515,12 @@ fun AllInfoScreen(
                                     exportProgressMap[type] = completed to total
                                 }
                             }
-                            val progress = exportProgressMap[type] ?: (0 to dataList.size)
+                            val (completed, total) = exportProgressMap[type] ?: (0 to dataList.size)
+                            val percent = if (total > 0) (completed * 100 / total) else 0
+                            dataList.forEach { rec ->
+                                rec.progress = percent
+                            }
+
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 Text(
                                     text = type.typeName,
@@ -593,11 +529,11 @@ fun AllInfoScreen(
                                     textAlign = TextAlign.Center
                                 )
                                 LinearProgressIndicator(
-                                    progress = if (progress.second > 0) progress.first.toFloat() / progress.second else 0f,
+                                    progress = if (total > 0) completed.toFloat() / total else 0f,
                                     modifier = Modifier.fillMaxWidth()
                                 )
                                 Text(
-                                    text = "Выгружено ${progress.first} из ${progress.second}",
+                                    text = "Выгружено $completed из $total",
                                     fontSize = 16.sp,
                                     modifier = Modifier.fillMaxWidth(),
                                     textAlign = TextAlign.Center
@@ -605,49 +541,73 @@ fun AllInfoScreen(
                             }
                         }
                     }
+
+                    // Общий прогресс всех типов
+                    if (exportProgressMap.isNotEmpty()) {
+                        val totalCompleted = exportProgressMap.values.sumOf { it.first }
+                        val totalTotal = exportProgressMap.values.sumOf { it.second }
+                        val globalPercent  = if (totalTotal > 0) (totalCompleted * 100 / totalTotal) else 0
+                        exports.forEach { (_, dataList) ->
+                            dataList.forEach { rec ->
+                                rec.progress = globalPercent
+                            }
+                        }
+
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                text = "Общий прогресс: $globalPercent%",
+                                fontSize = 18.sp,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center
+                            )
+                            LinearProgressIndicator(
+//                                progress = if (totalTotal > 0) totalCompleted.toFloat() / totalTotal else 0f,
+                                progress = globalPercent / 100f,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Text(
+                                text = "Выгружено $totalCompleted из $totalTotal",
+                                fontSize = 18.sp,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
                 }
             }
         }
 
-        // Если включён режим сканера, отображаем его поверх основного экрана
+        // Camera scanner overlay
         if (isCameraMode) {
             Box(modifier = Modifier.fillMaxSize()) {
                 CameraScannerScreen(
                     onQRCodeScanned = { result ->
-                        // Сначала сбрасываем предыдущее сообщение об ошибке
                         warningMessage = null
-                        // Если результат пустой
                         if (result.isNullOrEmpty()) {
                             warningMessage = "Сканирование не дало результата."
                             isCameraMode = false
                         } else if (!isValidUrl(result)) {
-                            // Если строка не является валидным URL
                             warningMessage = "Сканированный QR-код не содержит корректного URL."
                             isCameraMode = false
                         } else {
-                            // Отправляем запрос по полученному URL
                             sendRequestToUrl(result) { code, responseBody ->
                                 if (code !in 200..299) {
-                                    // Если код ответа не 2xx — показываем предупреждение
-                                    warningMessage =
-                                        "Запрос по сканированному URL вернул ошибку: $code"
+                                    warningMessage = "Запрос по сканированному URL вернул ошибку: $code"
                                 } else {
-                                    // Пытаемся распарсить конфигурацию
                                     val config = parseConfig(responseBody)
                                     if (config == null) {
-                                        warningMessage =
-                                            "Полученные данные не соответствуют ожидаемому формату."
+                                        warningMessage = "Полученные данные не соответствуют ожидаемому формату."
                                     } else {
                                         GlobalConfig.config = config
                                         configState = config
-                                        // Явно сбрасываем сообщение об ошибке, если всё успешно
                                         warningMessage = null
                                     }
                                 }
                             }
                             isCameraMode = false
                         }
-                    })
+                    }
+                )
                 Button(
                     onClick = { isCameraMode = false },
                     modifier = Modifier
@@ -659,24 +619,17 @@ fun AllInfoScreen(
             }
         }
 
-        // Отображение предупреждения, если оно установлено
-        warningMessage?.let { message ->
-            WarningDialog(message = message) { warningMessage = null }
+        // Warning dialog
+        warningMessage?.let { msg ->
+            WarningDialog(message = msg) { warningMessage = null }
         }
     }
 }
 
-/**
- * Проверяет, является ли строка валидным URL.
- */
 fun isValidUrl(url: String): Boolean {
     return Patterns.WEB_URL.matcher(url).matches()
 }
 
-/**
- * Выполняет HTTP‑GET‑запрос по данному URL.
- * Результат возвращается через onResult, содержащий HTTP-код и тело ответа.
- */
 fun sendRequestToUrl(url: String, onResult: (code: Int, body: String) -> Unit) {
     val client = OkHttpClient()
     try {
@@ -685,7 +638,6 @@ fun sendRequestToUrl(url: String, onResult: (code: Int, body: String) -> Unit) {
             override fun onFailure(call: Call, e: IOException) {
                 onResult(-1, "Ошибка запроса: ${e.localizedMessage}")
             }
-
             override fun onResponse(call: Call, response: Response) {
                 val body = response.body?.string() ?: "Пустой ответ"
                 onResult(response.code, body)
@@ -696,17 +648,6 @@ fun sendRequestToUrl(url: String, onResult: (code: Int, body: String) -> Unit) {
     }
 }
 
-/**
- * Парсит JSON-ответ в объект ConfigData.
- * Ожидается, что JSON имеет формат:
- * {
- *   "post_here": "str",
- *   "access_token": "str",
- *   "refresh_token": "str",
- *   "refresh_token_url": "str",
- *   "token_type": "str"
- * }
- */
 fun parseConfig(response: String): ConfigData? {
     return try {
         Gson().fromJson(response, ConfigData::class.java)
@@ -715,32 +656,26 @@ fun parseConfig(response: String): ConfigData? {
     }
 }
 
-/**
- * Обновляет access_token, используя refresh_token.
- * Если обновление успешно, возвращает true и обновляет GlobalConfig.
- */
 fun refreshAccessToken(config: ConfigData): Boolean {
     val client = OkHttpClient()
     val gson = Gson()
     val requestBodyJson = gson.toJson(mapOf("refresh_token" to config.refresh_token))
     val jsonMediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
     val requestBody = requestBodyJson.toRequestBody(jsonMediaType)
-
-    val request = Request.Builder().url(config.refresh_token_url).post(requestBody)
+    val request = Request.Builder()
+        .url(config.refresh_token_url)
+        .post(requestBody)
         .addHeader("accept", "application/json")
         .addHeader("Authorization", "Bearer ${config.access_token}")
-        .addHeader("Content-Type", "application/json").build()
-
+        .addHeader("Content-Type", "application/json")
+        .build()
     try {
         client.newCall(request).execute().use { response ->
             if (response.code == 200) {
-                val responseBody = response.body?.string()
-                if (!responseBody.isNullOrEmpty()) {
-                    val refreshedData = gson.fromJson(responseBody, ConfigData::class.java)
-                    if (!refreshedData.access_token.isNullOrEmpty()) {
-                        GlobalConfig.config = config.copy(access_token = refreshedData.access_token)
-                        return true
-                    }
+                val refreshedData = response.body?.string()?.let { Gson().fromJson(it, ConfigData::class.java) }
+                if (refreshedData != null && refreshedData.access_token.isNotEmpty()) {
+                    GlobalConfig.config = config.copy(access_token = refreshedData.access_token)
+                    return true
                 }
             }
         }
@@ -750,9 +685,6 @@ fun refreshAccessToken(config: ConfigData): Boolean {
     return false
 }
 
-/**
- * Экспортирует данные пачками по 50 элементов с учетом проверки HTTP-кода и обновления токена.
- */
 suspend fun <T> exportDataInBatches(
     dataType: DataType,
     dataList: List<T>,
@@ -764,44 +696,24 @@ suspend fun <T> exportDataInBatches(
     val client = OkHttpClient()
     val total = dataList.size
     var completed = 0
-
     dataList.chunked(50).forEach { batch ->
-        val jsonBody = gson.toJson(batch)
-        val requestBody = jsonBody.toRequestBody(jsonMediaType)
-
-        fun buildRequest(token: String): Request {
-            return Request.Builder().url("${config.post_here}/${dataType.typeName}")
-                .post(requestBody).addHeader("Authorization", "Bearer $token")
-                .addHeader("Content-Type", "application/json").build()
-        }
-
+        val requestBody = gson.toJson(batch).toRequestBody(jsonMediaType)
+        fun buildRequest(token: String) = Request.Builder()
+            .url("${config.post_here}/${dataType.typeName}")
+            .post(requestBody)
+            .addHeader("Authorization", "Bearer $token")
+            .addHeader("Content-Type", "application/json")
+            .build()
         var request = buildRequest(config.access_token)
         var responseSuccess = false
-
         try {
             client.newCall(request).execute().use { response ->
                 if (response.code in 200..299) {
-                    Log.d("ExportData", "Пачка успешно выгружена: ${response.code}")
                     responseSuccess = true
-                } else {
-                    Log.e("ExportData", "Ошибка: получен код ${response.code} при экспорте")
-                    if (response.code == 403) {
-                        if (refreshAccessToken(config)) {
-                            request = buildRequest(GlobalConfig.config!!.access_token)
-                            client.newCall(request).execute().use { refreshedResponse ->
-                                if (refreshedResponse.code in 200..299) {
-                                    Log.d(
-                                        "ExportData",
-                                        "Пачка успешно выгружена после обновления токена: ${refreshedResponse.code}"
-                                    )
-                                    responseSuccess = true
-                                } else {
-                                    Log.e(
-                                        "ExportData",
-                                        "Ошибка после обновления токена: ${refreshedResponse.code}"
-                                    )
-                                }
-                            }
+                } else if (response.code == 403 && refreshAccessToken(config)) {
+                    client.newCall(buildRequest(GlobalConfig.config!!.access_token)).execute().use { resp2 ->
+                        if (resp2.code in 200..299) {
+                            responseSuccess = true
                         }
                     }
                 }
@@ -809,11 +721,6 @@ suspend fun <T> exportDataInBatches(
         } catch (e: Exception) {
             Log.e("ExportData", "Ошибка при выгрузке пачки: ${e.localizedMessage}")
         }
-
-        if (!responseSuccess) {
-            Log.e("ExportData", "Не удалось экспортировать пачку данных для ${dataType.typeName}")
-        }
-
         completed += batch.size
         withContext(Dispatchers.Main) {
             onProgressUpdate(completed, total)
@@ -821,13 +728,8 @@ suspend fun <T> exportDataInBatches(
     }
 }
 
-/**
- * Отображает превью камеры и запускает обработку кадров для сканирования QR‑кода.
- */
 @Composable
-fun CameraScannerScreen(
-    onQRCodeScanned: (String?) -> Unit
-) {
+fun CameraScannerScreen(onQRCodeScanned: (String?) -> Unit) {
     val context = LocalContext.current
     val lifecycleOwner = context as? LifecycleOwner
     var scannedResult by remember { mutableStateOf<String?>(null) }
@@ -836,27 +738,28 @@ fun CameraScannerScreen(
             factory = { ctx ->
                 PreviewView(ctx).also { previewView ->
                     bindCameraUseCases(previewView, lifecycleOwner) { result ->
-                        result?.let { res: String ->
-                            scannedResult = res
-                            onQRCodeScanned(res)
+                        result?.let {
+                            scannedResult = it
+                            onQRCodeScanned(it)
                         }
                     }
                 }
-            }, modifier = Modifier.fillMaxSize()
+            },
+            modifier = Modifier.fillMaxSize()
         )
-        scannedResult?.let { result ->
+        scannedResult?.let {
             Text(
-                text = "Найден QR-код: $result", modifier = Modifier.align(Alignment.BottomCenter)
+                text = "Найден QR-код: $it",
+                modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
     }
 }
 
-/**
- * Привязывает CameraX к жизненному циклу и запускает анализ кадров с помощью ML Kit.
- */
 private fun bindCameraUseCases(
-    previewView: PreviewView, lifecycleOwner: LifecycleOwner?, onBarcodeFound: (String?) -> Unit
+    previewView: PreviewView,
+    lifecycleOwner: LifecycleOwner?,
+    onBarcodeFound: (String?) -> Unit
 ) {
     val context = previewView.context
     val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
@@ -865,17 +768,19 @@ private fun bindCameraUseCases(
         val preview = Preview.Builder().build().also {
             it.setSurfaceProvider(previewView.surfaceProvider)
         }
-        val imageAnalysis =
-            ImageAnalysis.Builder().setBackpressureStrategy(STRATEGY_KEEP_ONLY_LATEST).build()
-        imageAnalysis.setAnalyzer(
-            ContextCompat.getMainExecutor(context)
-        ) { imageProxy ->
+        val imageAnalysis = ImageAnalysis.Builder()
+            .setBackpressureStrategy(STRATEGY_KEEP_ONLY_LATEST)
+            .build()
+        imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(context)) { imageProxy ->
             processImageProxy(imageProxy, onBarcodeFound)
         }
         try {
             cameraProvider.unbindAll()
             cameraProvider.bindToLifecycle(
-                lifecycleOwner!!, CameraSelector.DEFAULT_BACK_CAMERA, preview, imageAnalysis
+                lifecycleOwner!!,
+                CameraSelector.DEFAULT_BACK_CAMERA,
+                preview,
+                imageAnalysis
             )
         } catch (exc: Exception) {
             exc.printStackTrace()
@@ -883,28 +788,25 @@ private fun bindCameraUseCases(
     }, ContextCompat.getMainExecutor(context))
 }
 
-/**
- * Обрабатывает кадр с камеры, пытаясь извлечь QR‑код с помощью ML Kit.
- */
 private fun processImageProxy(
-    imageProxy: ImageProxy, onBarcodeFound: (String?) -> Unit
+    imageProxy: ImageProxy,
+    onBarcodeFound: (String?) -> Unit
 ) {
     val mediaImage = imageProxy.image
     if (mediaImage != null) {
         val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
         val scanner = BarcodeScanning.getClient()
-        scanner.process(image).addOnSuccessListener { barcodes ->
-            if (barcodes.isNotEmpty()) {
-                onBarcodeFound(barcodes.first().rawValue)
-            } else {
+        scanner.process(image)
+            .addOnSuccessListener { barcodes ->
+                onBarcodeFound(barcodes.firstOrNull()?.rawValue)
+            }
+            .addOnFailureListener {
+                it.printStackTrace()
                 onBarcodeFound(null)
             }
-        }.addOnFailureListener { e ->
-            e.printStackTrace()
-            onBarcodeFound(null)
-        }.addOnCompleteListener {
-            imageProxy.close()
-        }
+            .addOnCompleteListener {
+                imageProxy.close()
+            }
     } else {
         imageProxy.close()
     }
