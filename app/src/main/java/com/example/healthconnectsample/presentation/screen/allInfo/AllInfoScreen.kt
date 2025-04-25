@@ -123,7 +123,8 @@ data class ConfigData(
     val access_token: String,
     val refresh_token: String,
     val refresh_token_url: String,
-    val token_type: String
+    val token_type: String,
+    val email: String
 )
 
 var globalPercent = 0
@@ -138,7 +139,9 @@ fun <T> exportHealthDataInBackground(
     }
 }
 
-data class SampleRecord(val value: String, val time: String, var progress: Number)
+data class SampleRecord(
+    val value: String, val time: String, var progress: Number, var email: String
+)
 
 @Composable
 fun WarningDialog(message: String, onDismiss: () -> Unit) {
@@ -255,7 +258,8 @@ fun AllInfoScreen(
                     SampleRecord(
                         value = rec.duration.toString(),
                         time = rec.startTime.toString(),
-                        progress = 0
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -263,7 +267,14 @@ fun AllInfoScreen(
         bloodOxygenListProcessed.apply {
             clear()
             bloodOxygenList.forEach { rec ->
-                add(SampleRecord(value = rec.value, time = rec.startTime.toString(), progress = 0))
+                add(
+                    SampleRecord(
+                        value = rec.value,
+                        time = rec.startTime.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
             }
         }
         heartRateListProcessed.apply {
@@ -274,7 +285,8 @@ fun AllInfoScreen(
                         SampleRecord(
                             value = sample.beatsPerMinute.toString(),
                             time = sample.time.toString(),
-                            progress = 0
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
                         )
                     )
                 }
@@ -287,7 +299,8 @@ fun AllInfoScreen(
                     SampleRecord(
                         value = rec.energy.inKilocalories.toString(),
                         time = rec.startTime.toString(),
-                        progress = 0
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -299,7 +312,8 @@ fun AllInfoScreen(
                     SampleRecord(
                         value = rec.basalMetabolicRate.toString(),
                         time = rec.time.toString(),
-                        progress = 0
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -311,7 +325,8 @@ fun AllInfoScreen(
                     SampleRecord(
                         value = "${rec.systolic}/${rec.diastolic}",
                         time = rec.time.toString(),
-                        progress = 0
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -321,7 +336,10 @@ fun AllInfoScreen(
             bodyFatList.forEach { rec ->
                 add(
                     SampleRecord(
-                        value = rec.percentage.toString(), time = rec.time.toString(), progress = 0
+                        value = rec.percentage.toString(),
+                        time = rec.time.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -331,7 +349,10 @@ fun AllInfoScreen(
             bodyTemperatureList.forEach { rec ->
                 add(
                     SampleRecord(
-                        value = rec.temperature.toString(), time = rec.time.toString(), progress = 0
+                        value = rec.temperature.toString(),
+                        time = rec.time.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -343,7 +364,8 @@ fun AllInfoScreen(
                     SampleRecord(
                         value = rec.mass.inKilograms.toString(),
                         time = rec.time.toString(),
-                        progress = 0
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -355,7 +377,8 @@ fun AllInfoScreen(
                     SampleRecord(
                         value = rec.distance.toString(),
                         time = rec.startTime.toString(),
-                        progress = 0
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -365,7 +388,10 @@ fun AllInfoScreen(
             exerciseSessionList.forEach { rec ->
                 add(
                     SampleRecord(
-                        value = rec.title.toString(), time = rec.startTime.toString(), progress = 0
+                        value = rec.title.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -375,7 +401,10 @@ fun AllInfoScreen(
             hydrationList.forEach { rec ->
                 add(
                     SampleRecord(
-                        value = rec.volume.toString(), time = rec.startTime.toString(), progress = 0
+                        value = rec.volume.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -387,7 +416,8 @@ fun AllInfoScreen(
                     SampleRecord(
                         value = rec.samples.toString(),
                         time = rec.startTime.toString(),
-                        progress = 0
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -397,7 +427,10 @@ fun AllInfoScreen(
             stepsList.forEach { rec ->
                 add(
                     SampleRecord(
-                        value = rec.count.toString(), time = rec.startTime.toString(), progress = 0
+                        value = rec.count.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -409,7 +442,8 @@ fun AllInfoScreen(
                     SampleRecord(
                         value = rec.energy.inKilocalories.toString(),
                         time = rec.startTime.toString(),
-                        progress = 0
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -419,7 +453,10 @@ fun AllInfoScreen(
             weightList.forEach { rec ->
                 add(
                     SampleRecord(
-                        value = rec.weight.toString(), time = rec.time.toString(), progress = 0
+                        value = rec.weight.toString(),
+                        time = rec.time.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -429,7 +466,10 @@ fun AllInfoScreen(
             basalBodyTemperatureList.forEach { rec ->
                 add(
                     SampleRecord(
-                        value = rec.temperature.toString(), time = rec.time.toString(), progress = 0
+                        value = rec.temperature.toString(),
+                        time = rec.time.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -439,7 +479,10 @@ fun AllInfoScreen(
             floorsClimbedList.forEach { rec ->
                 add(
                     SampleRecord(
-                        value = rec.floors.toString(), time = rec.startTime.toString(), progress = 0
+                        value = rec.floors.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -449,7 +492,10 @@ fun AllInfoScreen(
             intermenstrualBleedingList.forEach { rec ->
                 add(
                     SampleRecord(
-                        value = rec.zoneOffset.toString(), time = rec.time.toString(), progress = 0
+                        value = rec.zoneOffset.toString(),
+                        time = rec.time.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -459,7 +505,10 @@ fun AllInfoScreen(
             leanBodyMassList.forEach { rec ->
                 add(
                     SampleRecord(
-                        value = rec.mass.toString(), time = rec.time.toString(), progress = 0
+                        value = rec.mass.toString(),
+                        time = rec.time.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -469,7 +518,10 @@ fun AllInfoScreen(
             menstruationFlowList.forEach { rec ->
                 add(
                     SampleRecord(
-                        value = rec.flow.toString(), time = rec.time.toString(), progress = 0
+                        value = rec.flow.toString(),
+                        time = rec.time.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -479,7 +531,10 @@ fun AllInfoScreen(
             nutritionList.forEach { rec ->
                 add(
                     SampleRecord(
-                        value = rec.energy.toString(), time = rec.startTime.toString(), progress = 0
+                        value = rec.energy.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -491,7 +546,8 @@ fun AllInfoScreen(
                     SampleRecord(
                         value = rec.samples.toString(),
                         time = rec.startTime.toString(),
-                        progress = 0
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -501,7 +557,10 @@ fun AllInfoScreen(
             respiratoryRateList.forEach { rec ->
                 add(
                     SampleRecord(
-                        value = rec.rate.toString(), time = rec.time.toString(), progress = 0
+                        value = rec.rate.toString(),
+                        time = rec.time.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -513,7 +572,8 @@ fun AllInfoScreen(
                     SampleRecord(
                         value = rec.beatsPerMinute.toString(),
                         time = rec.time.toString(),
-                        progress = 0
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -525,7 +585,8 @@ fun AllInfoScreen(
                     SampleRecord(
                         value = rec.baseline?.inCelsius.toString(),
                         time = rec.startTime.toString(),
-                        progress = 0
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
                     )
                 )
             }
@@ -553,208 +614,221 @@ fun AllInfoScreen(
     val cameraPermissionState = rememberPermissionState(permission = Manifest.permission.CAMERA)
 
     Box(modifier = Modifier.fillMaxSize()) {
+
+
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .fillMaxWidth()
+                .padding(8.dp)
         ) {
-            // Permissions and camera buttons
-            if (!permissionsGranted) {
-                Button(onClick = { onPermissionsLaunch(permissions) }) {
-                    Text(text = stringResource(R.string.permissions_button_label))
-                }
+
+            Text(text = "Email: ${configState?.email}", fontSize = 14.sp)
+        }
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Permissions and camera buttons
+        if (!permissionsGranted) {
+            Button(onClick = { onPermissionsLaunch(permissions) }) {
+                Text(text = stringResource(R.string.permissions_button_label))
             }
+        }
+        Button(
+            onClick = {
+                if (ContextCompat.checkSelfPermission(
+                        context, Manifest.permission.CAMERA
+                    ) == PackageManager.PERMISSION_GRANTED
+                ) {
+                    isCameraMode = true
+                } else {
+                    cameraPermissionState.launchPermissionRequest()
+                }
+            }, modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(text = "Открыть камеру")
+        }
+        if (ContextCompat.checkSelfPermission(
+                context, Manifest.permission.CAMERA
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
             Button(
                 onClick = {
-                    if (ContextCompat.checkSelfPermission(
-                            context, Manifest.permission.CAMERA
-                        ) == PackageManager.PERMISSION_GRANTED
-                    ) {
-                        isCameraMode = true
-                    } else {
-                        cameraPermissionState.launchPermissionRequest()
-                    }
+                    val intent = Intent(
+                        android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.fromParts("package", context.packageName, null)
+                    )
+                    context.startActivity(intent)
                 }, modifier = Modifier.fillMaxWidth()
             ) {
-                Text(text = "Открыть камеру")
+                Text(text = "Предоставить разрешение в настройках")
             }
-            if (ContextCompat.checkSelfPermission(
-                    context, Manifest.permission.CAMERA
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                Button(
-                    onClick = {
-                        val intent = Intent(
-                            android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                            Uri.fromParts("package", context.packageName, null)
-                        )
-                        context.startActivity(intent)
-                    }, modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(text = "Предоставить разрешение в настройках")
-                }
-            }
+        }
 
-            // Progress bars for each data type
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                val exports = listOf(
-                    DataType.SLEEP_SESSION_DATA to sleepSessionsListProcessed,
-                    DataType.BLOOD_OXYGEN_DATA to bloodOxygenListProcessed,
-                    DataType.HEART_RATE_RECORD to heartRateListProcessed,
-                    DataType.ACTIVE_CALORIES_BURNED_RECORD to activeCaloriesListProcessed,
-                    DataType.BASAL_METABOLIC_RATE_RECORD to basalMetabolicRateListProcessed,
-                    DataType.BLOOD_PRESSURE_RECORD to bloodPressureListProcessed,
-                    DataType.BODY_FAT_RECORD to bodyFatListProcessed,
-                    DataType.BODY_TEMPERATURE_RECORD to bodyTemperatureListProcessed,
-                    DataType.BONE_MASS_RECORD to boneMassListProcessed,
-                    DataType.DISTANCE_RECORD to distanceListProcessed,
-                    DataType.EXERCISE_SESSION_RECORD to exerciseSessionListProcessed,
-                    DataType.HYDRATION_RECORD to hydrationListProcessed,
-                    DataType.SPEED_RECORD to speedListProcessed,
-                    DataType.STEPS_RECORD to stepsListProcessed,
-                    DataType.TOTAL_CALORIES_BURNED_RECORD to totalCaloriesBurnedListProcessed,
-                    DataType.WEIGHT_RECORD to weightListProcessed,
-                    DataType.BASAL_BODY_TEMPERATURE_RECORD to basalBodyTemperatureListProcessed,
-                    DataType.FLOORS_CLIMBED_RECORD to floorsClimbedListProcessed,
-                    DataType.INTERMENSTRUAL_BLEEDING_RECORD to intermenstrualBleedingListProcessed,
-                    DataType.LEAN_BODY_MASS_RECORD to leanBodyMassListProcessed,
-                    DataType.MENSTRUATION_FLOW_RECORD to menstruationFlowListProcessed,
-                    DataType.NUTRITION_RECORD to nutritionListProcessed,
-                    DataType.POWER_RECORD to powerListProcessed,
-                    DataType.RESPIRATORY_RATE_RECORD to respiratoryRateListProcessed,
-                    DataType.RESTING_HEART_RATE_RECORD to restingHeartRateListProcessed,
-                    DataType.SKIN_TEMPERATURE_RECORD to skinTemperatureListProcessed
-                )
-                configState?.let {
-                    // Individual progress bars
-                    exports.forEach { (type, dataList) ->
-                        if (dataList.isNotEmpty()) {
-                            val (completed, total) = exportProgressMap[type] ?: (0 to dataList.size)
-                            var totalCompleted = exportProgressMap.values.sumOf { it.first }
-                            val totalTotal = exportProgressMap.values.sumOf { it.second }
-                            globalPercent =
-                                if (totalTotal > 0) (totalCompleted * 100 / totalTotal) else 0
-                            globalPercent = if (globalPercent < 100) (globalPercent + 1) else globalPercent
-                            exports.forEach { (_, dataList) ->
-                                dataList.forEach { rec ->
-
-
-                                    rec.progress = globalPercent
-                                }
-                            }
-
-
-                            if (exportProgressMap[type] == null) {
-                                exportHealthDataInBackground(dataList, type) { completed, total ->
-                                    exportProgressMap[type] = completed to total
-                                }
-                            }
-
-
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                Text(
-                                    text = type.typeName,
-                                    fontSize = 16.sp,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    textAlign = TextAlign.Center
-                                )
-                                LinearProgressIndicator(
-                                    progress = if (total > 0) completed.toFloat() / total else 0f,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                Text(
-                                    text = "Выгружено $completed из $total",
-                                    fontSize = 16.sp,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    textAlign = TextAlign.Center
-                                )
+        // Progress bars for each data type
+        Column(
+            modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            val exports = listOf(
+                DataType.SLEEP_SESSION_DATA to sleepSessionsListProcessed,
+                DataType.BLOOD_OXYGEN_DATA to bloodOxygenListProcessed,
+                DataType.HEART_RATE_RECORD to heartRateListProcessed,
+                DataType.ACTIVE_CALORIES_BURNED_RECORD to activeCaloriesListProcessed,
+                DataType.BASAL_METABOLIC_RATE_RECORD to basalMetabolicRateListProcessed,
+                DataType.BLOOD_PRESSURE_RECORD to bloodPressureListProcessed,
+                DataType.BODY_FAT_RECORD to bodyFatListProcessed,
+                DataType.BODY_TEMPERATURE_RECORD to bodyTemperatureListProcessed,
+                DataType.BONE_MASS_RECORD to boneMassListProcessed,
+                DataType.DISTANCE_RECORD to distanceListProcessed,
+                DataType.EXERCISE_SESSION_RECORD to exerciseSessionListProcessed,
+                DataType.HYDRATION_RECORD to hydrationListProcessed,
+                DataType.SPEED_RECORD to speedListProcessed,
+                DataType.STEPS_RECORD to stepsListProcessed,
+                DataType.TOTAL_CALORIES_BURNED_RECORD to totalCaloriesBurnedListProcessed,
+                DataType.WEIGHT_RECORD to weightListProcessed,
+                DataType.BASAL_BODY_TEMPERATURE_RECORD to basalBodyTemperatureListProcessed,
+                DataType.FLOORS_CLIMBED_RECORD to floorsClimbedListProcessed,
+                DataType.INTERMENSTRUAL_BLEEDING_RECORD to intermenstrualBleedingListProcessed,
+                DataType.LEAN_BODY_MASS_RECORD to leanBodyMassListProcessed,
+                DataType.MENSTRUATION_FLOW_RECORD to menstruationFlowListProcessed,
+                DataType.NUTRITION_RECORD to nutritionListProcessed,
+                DataType.POWER_RECORD to powerListProcessed,
+                DataType.RESPIRATORY_RATE_RECORD to respiratoryRateListProcessed,
+                DataType.RESTING_HEART_RATE_RECORD to restingHeartRateListProcessed,
+                DataType.SKIN_TEMPERATURE_RECORD to skinTemperatureListProcessed
+            )
+            configState?.let {
+                // Individual progress bars
+                exports.forEach { (type, dataList) ->
+                    if (dataList.isNotEmpty()) {
+                        val (completed, total) = exportProgressMap[type] ?: (0 to dataList.size)
+                        var totalCompleted = exportProgressMap.values.sumOf { it.first }
+                        val totalTotal = exportProgressMap.values.sumOf { it.second }
+                        globalPercent =
+                            if (totalTotal > 0) (totalCompleted * 100 / totalTotal) else 0
+                        globalPercent =
+                            if (globalPercent < 100) (globalPercent + 1) else globalPercent
+                        exports.forEach { (_, dataList) ->
+                            dataList.forEach { rec ->
+                                rec.progress = globalPercent
+                                rec.email = configState?.email.toString()
                             }
                         }
-                    }
 
-                    // Общий прогресс всех типов
-                    if (exportProgressMap.isNotEmpty()) {
-                        val totalCompleted = exportProgressMap.values.sumOf { it.first }
-                        val totalTotal = exportProgressMap.values.sumOf { it.second }
+
+                        if (exportProgressMap[type] == null) {
+                            exportHealthDataInBackground(dataList, type) { completed, total ->
+                                exportProgressMap[type] = completed to total
+                            }
+                        }
 
 
                         Column(modifier = Modifier.fillMaxWidth()) {
                             Text(
-                                text = "Общий прогресс: $globalPercent%",
-                                fontSize = 18.sp,
+                                text = type.typeName,
+                                fontSize = 16.sp,
                                 modifier = Modifier.fillMaxWidth(),
                                 textAlign = TextAlign.Center
                             )
                             LinearProgressIndicator(
-//                                progress = if (totalTotal > 0) totalCompleted.toFloat() / totalTotal else 0f,
-                                progress = globalPercent / 100f, modifier = Modifier.fillMaxWidth()
+                                progress = if (total > 0) completed.toFloat() / total else 0f,
+                                modifier = Modifier.fillMaxWidth()
                             )
                             Text(
-                                text = "Выгружено $totalCompleted из $totalTotal",
-                                fontSize = 18.sp,
+                                text = "Выгружено $completed из $total",
+                                fontSize = 16.sp,
                                 modifier = Modifier.fillMaxWidth(),
                                 textAlign = TextAlign.Center
                             )
                         }
                     }
                 }
-            }
-        }
 
-        // Camera scanner overlay
-        if (isCameraMode) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                CameraScannerScreen(
-                    onQRCodeScanned = { result ->
-                        warningMessage = null
-                        if (result.isNullOrEmpty()) {
-                            warningMessage = "Сканирование не дало результата."
-                            isCameraMode = false
-                        } else if (!isValidUrl(result)) {
-                            warningMessage = "Сканированный QR-код не содержит корректного URL."
-                            isCameraMode = false
-                        } else {
-                            sendRequestToUrl(result) { code, responseBody ->
-                                if (code !in 200..299) {
-                                    warningMessage =
-                                        "Запрос по сканированному URL вернул ошибку: $code"
-                                } else {
-                                    val config = parseConfig(responseBody)
-                                    if (config == null) {
-                                        warningMessage =
-                                            "Полученные данные не соответствуют ожидаемому формату."
-                                    } else {
-                                        GlobalConfig.config = config
-                                        configState = config
-                                        warningMessage = null
-                                    }
-                                }
-                            }
-                            isCameraMode = false
-                        }
-                    })
-                Button(
-                    onClick = { isCameraMode = false },
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 16.dp)
-                ) {
-                    Text(text = "Назад")
+                // Общий прогресс всех типов
+                if (exportProgressMap.isNotEmpty()) {
+                    val totalCompleted = exportProgressMap.values.sumOf { it.first }
+                    val totalTotal = exportProgressMap.values.sumOf { it.second }
+
+
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "Общий прогресс: $globalPercent%",
+                            fontSize = 18.sp,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                        LinearProgressIndicator(
+//                                progress = if (totalTotal > 0) totalCompleted.toFloat() / totalTotal else 0f,
+                            progress = globalPercent / 100f, modifier = Modifier.fillMaxWidth()
+                        )
+                        Text(
+                            text = "Выгружено $totalCompleted из $totalTotal",
+                            fontSize = 18.sp,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
         }
+    }
 
-        // Warning dialog
-        warningMessage?.let { msg ->
-            WarningDialog(message = msg) { warningMessage = null }
+    // Camera scanner overlay
+    if (isCameraMode) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            CameraScannerScreen(
+                onQRCodeScanned = { result ->
+                    warningMessage = null
+                    if (result.isNullOrEmpty()) {
+                        warningMessage = "Сканирование не дало результата."
+                        isCameraMode = false
+                    } else if (!isValidUrl(result)) {
+                        warningMessage = "Сканированный QR-код не содержит корректного URL."
+                        isCameraMode = false
+                    } else {
+                        sendRequestToUrl(result) { code, responseBody ->
+                            if (code !in 200..299) {
+                                warningMessage = "Запрос по сканированному URL вернул ошибку: $code"
+                            } else {
+                                val config = parseConfig(responseBody)
+                                if (config == null) {
+                                    warningMessage =
+                                        "Полученные данные не соответствуют ожидаемому формату."
+                                } else {
+                                    GlobalConfig.config = config
+                                    configState = config
+                                    warningMessage = null
+                                }
+                            }
+                        }
+                        isCameraMode = false
+                    }
+                })
+            Button(
+                onClick = { isCameraMode = false },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 16.dp)
+            ) {
+                Text(text = "Назад")
+            }
+
+
         }
+
+
+    }
+
+    // Warning dialog
+    warningMessage?.let { msg ->
+        WarningDialog(message = msg) { warningMessage = null }
     }
 }
+
 
 fun isValidUrl(url: String): Boolean {
     return Patterns.WEB_URL.matcher(url).matches()
