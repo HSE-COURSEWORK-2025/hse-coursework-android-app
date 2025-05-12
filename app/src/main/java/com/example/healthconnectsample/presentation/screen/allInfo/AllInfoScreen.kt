@@ -15,237 +15,990 @@
  */
 package com.example.healthconnectsample.presentation.screen.allInfo
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.util.Log
+import android.util.Patterns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts.GetContent
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST
+import androidx.camera.core.Preview
+import androidx.camera.core.ImageProxy
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
+import androidx.compose.material.LinearProgressIndicator
 import androidx.compose.material.Text
+import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.health.connect.client.permission.HealthPermission
-import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
-import androidx.health.connect.client.records.BasalMetabolicRateRecord
-import androidx.health.connect.client.records.BloodPressureRecord
-import androidx.health.connect.client.records.BodyFatRecord
-import androidx.health.connect.client.records.BodyTemperatureRecord
-import androidx.health.connect.client.records.BoneMassRecord
-import androidx.health.connect.client.records.DistanceRecord
-import androidx.health.connect.client.records.ExerciseSessionRecord
-import androidx.health.connect.client.records.HeartRateRecord
-import androidx.health.connect.client.records.HydrationRecord
-import androidx.health.connect.client.records.SleepSessionRecord
-import androidx.health.connect.client.records.SpeedRecord
-import androidx.health.connect.client.records.StepsRecord
-import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
-import androidx.health.connect.client.records.WeightRecord
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.LifecycleOwner
 import com.example.healthconnectsample.R
 import com.example.healthconnectsample.data.SleepSessionData
-import com.example.healthconnectsample.presentation.theme.HealthConnectTheme
-import java.time.Duration
-import java.time.ZonedDateTime
-import java.time.temporal.ChronoUnit
+import com.example.healthconnectsample.data.BloodOxygenData
+import androidx.health.connect.client.records.*
+import androidx.health.connect.client.permission.HealthPermission
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberPermissionState
+import com.google.gson.Gson
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
+import java.io.IOException
 import java.util.UUID
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.common.InputImage
 
-import com.example.healthconnectsample.data.HeartRateData
+// Определение enum для типов данных
+enum class DataType(val typeName: String) {
+    SLEEP_SESSION_DATA("SleepSessionData"), BLOOD_OXYGEN_DATA("BloodOxygenData"), HEART_RATE_RECORD(
+        "HeartRateRecord"
+    ),
+    ACTIVE_CALORIES_BURNED_RECORD("ActiveCaloriesBurnedRecord"), BASAL_METABOLIC_RATE_RECORD("BasalMetabolicRateRecord"), BLOOD_PRESSURE_RECORD(
+        "BloodPressureRecord"
+    ),
+    BODY_FAT_RECORD("BodyFatRecord"), BODY_TEMPERATURE_RECORD("BodyTemperatureRecord"), BONE_MASS_RECORD(
+        "BoneMassRecord"
+    ),
+    DISTANCE_RECORD("DistanceRecord"), EXERCISE_SESSION_RECORD("ExerciseSessionRecord"), HYDRATION_RECORD(
+        "HydrationRecord"
+    ),
+    SPEED_RECORD("SpeedRecord"), STEPS_RECORD("StepsRecord"), TOTAL_CALORIES_BURNED_RECORD("TotalCaloriesBurnedRecord"), WEIGHT_RECORD(
+        "WeightRecord"
+    ),
+    BASAL_BODY_TEMPERATURE_RECORD("BasalBodyTemperatureRecord"), FLOORS_CLIMBED_RECORD("FloorsClimbedRecord"), INTERMENSTRUAL_BLEEDING_RECORD(
+        "IntermenstrualBleedingRecord"
+    ),
+    LEAN_BODY_MASS_RECORD("LeanBodyMassRecord"), MENSTRUATION_FLOW_RECORD("MenstruationFlowRecord"), NUTRITION_RECORD(
+        "NutritionRecord"
+    ),
+    POWER_RECORD("PowerRecord"), RESPIRATORY_RATE_RECORD("RespiratoryRateRecord"), RESTING_HEART_RATE_RECORD(
+        "RestingHeartRateRecord"
+    ),
+    SKIN_TEMPERATURE_RECORD("SkinTemperatureRecord")
+}
 
-/**
- * Shows a week's worth of sleep data.
- */
+object GlobalConfig {
+    var config: ConfigData? = null
+}
+
+data class ConfigData(
+    val post_here: String,
+    val access_token: String,
+    val refresh_token: String,
+    val refresh_token_url: String,
+    val token_type: String,
+    val email: String
+)
+
+var globalPercent = 0
+
+fun <T> exportHealthDataInBackground(
+    dataList: List<T>, dataType: DataType, onProgressUpdate: (completed: Int, total: Int) -> Unit
+) {
+    GlobalConfig.config?.let { config ->
+        CoroutineScope(Dispatchers.IO).launch {
+            exportDataInBatches(dataType, dataList, config, onProgressUpdate)
+        }
+    }
+}
+
+data class SampleRecord(
+    val value: String, val time: String, var progress: Number, var email: String
+)
+
 @Composable
-fun AllInfoSessionScreen(
+fun WarningDialog(message: String, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = "Предупреждение") },
+        text = { Text(text = message) },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = "OK")
+            }
+        })
+}
+
+@OptIn(ExperimentalPermissionsApi::class)
+@Composable
+fun AllInfoScreen(
     permissions: Set<String>,
     permissionsGranted: Boolean,
-    sleepSessionsList: List<SleepSessionData>,
     uiState: SleepSessionViewModel.UiState,
-    onInsertClick: () -> Unit = {},
     onError: (Throwable?) -> Unit = {},
     onPermissionsResult: () -> Unit = {},
     onPermissionsLaunch: (Set<String>) -> Unit = {},
-    HeartRateList: List<HeartRateData>,
+    sleepSessionsList: List<SleepSessionData>,
+    bloodOxygenList: List<BloodOxygenData>,
+    heartRateList: List<HeartRateRecord>,
+    activeCaloriesList: List<ActiveCaloriesBurnedRecord>,
+    basalMetabolicRateList: List<BasalMetabolicRateRecord>,
+    bloodPressureList: List<BloodPressureRecord>,
+    bodyFatList: List<BodyFatRecord>,
+    bodyTemperatureList: List<BodyTemperatureRecord>,
+    boneMassList: List<BoneMassRecord>,
+    distanceList: List<DistanceRecord>,
+    exerciseSessionList: List<ExerciseSessionRecord>,
+    hydrationList: List<HydrationRecord>,
+    speedList: List<SpeedRecord>,
+    stepsList: List<StepsRecord>,
+    totalCaloriesBurnedList: List<TotalCaloriesBurnedRecord>,
+    weightList: List<WeightRecord>,
+    basalBodyTemperatureList: List<BasalBodyTemperatureRecord>,
+    floorsClimbedList: List<FloorsClimbedRecord>,
+    intermenstrualBleedingList: List<IntermenstrualBleedingRecord>,
+    leanBodyMassList: List<LeanBodyMassRecord>,
+    menstruationFlowList: List<MenstruationFlowRecord>,
+    nutritionList: List<NutritionRecord>,
+    powerList: List<PowerRecord>,
+    respiratoryRateList: List<RespiratoryRateRecord>,
+    restingHeartRateList: List<RestingHeartRateRecord>,
+    skinTemperatureList: List<SkinTemperatureRecord>
+) {
+    val context = LocalContext.current
 
+    // Lists of processed sample records
+    val sleepSessionsListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val bloodOxygenListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val heartRateListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val activeCaloriesListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val basalMetabolicRateListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val bloodPressureListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val bodyFatListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val bodyTemperatureListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val boneMassListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val distanceListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val exerciseSessionListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val hydrationListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val speedListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val stepsListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val totalCaloriesBurnedListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val weightListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val basalBodyTemperatureListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val floorsClimbedListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val intermenstrualBleedingListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val leanBodyMassListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val menstruationFlowListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val nutritionListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val powerListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val respiratoryRateListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val restingHeartRateListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val skinTemperatureListProcessed = remember { mutableStateListOf<SampleRecord>() }
+
+    LaunchedEffect(
+        sleepSessionsList,
+        bloodOxygenList,
+        heartRateList,
+        activeCaloriesList,
+        basalMetabolicRateList,
+        bloodPressureList,
+        bodyFatList,
+        bodyTemperatureList,
+        boneMassList,
+        distanceList,
+        exerciseSessionList,
+        hydrationList,
+        speedList,
+        stepsList,
+        totalCaloriesBurnedList,
+        weightList,
+        basalBodyTemperatureList,
+        floorsClimbedList,
+        intermenstrualBleedingList,
+        leanBodyMassList,
+        menstruationFlowList,
+        nutritionList,
+        powerList,
+        respiratoryRateList,
+        restingHeartRateList,
+        skinTemperatureList
     ) {
+        // Process each record type into SampleRecord lists with initial progress=0
+        sleepSessionsListProcessed.apply {
+            clear()
+            sleepSessionsList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.duration.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        bloodOxygenListProcessed.apply {
+            clear()
+            bloodOxygenList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.value,
+                        time = rec.startTime.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        heartRateListProcessed.apply {
+            clear()
+            heartRateList.forEach { rec ->
+                rec.samples.forEach { sample ->
+                    add(
+                        SampleRecord(
+                            value = sample.beatsPerMinute.toString(),
+                            time = sample.time.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+        }
+        activeCaloriesListProcessed.apply {
+            clear()
+            activeCaloriesList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.energy.inKilocalories.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        basalMetabolicRateListProcessed.apply {
+            clear()
+            basalMetabolicRateList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.basalMetabolicRate.toString(),
+                        time = rec.time.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        bloodPressureListProcessed.apply {
+            clear()
+            bloodPressureList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = "${rec.systolic}/${rec.diastolic}",
+                        time = rec.time.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        bodyFatListProcessed.apply {
+            clear()
+            bodyFatList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.percentage.toString(),
+                        time = rec.time.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        bodyTemperatureListProcessed.apply {
+            clear()
+            bodyTemperatureList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.temperature.toString(),
+                        time = rec.time.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        boneMassListProcessed.apply {
+            clear()
+            boneMassList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.mass.inKilograms.toString(),
+                        time = rec.time.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        distanceListProcessed.apply {
+            clear()
+            distanceList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.distance.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        exerciseSessionListProcessed.apply {
+            clear()
+            exerciseSessionList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.title.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        hydrationListProcessed.apply {
+            clear()
+            hydrationList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.volume.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        speedListProcessed.apply {
+            clear()
+            speedList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.samples.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        stepsListProcessed.apply {
+            clear()
+            stepsList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.count.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        totalCaloriesBurnedListProcessed.apply {
+            clear()
+            totalCaloriesBurnedList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.energy.inKilocalories.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        weightListProcessed.apply {
+            clear()
+            weightList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.weight.toString(),
+                        time = rec.time.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        basalBodyTemperatureListProcessed.apply {
+            clear()
+            basalBodyTemperatureList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.temperature.toString(),
+                        time = rec.time.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        floorsClimbedListProcessed.apply {
+            clear()
+            floorsClimbedList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.floors.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        intermenstrualBleedingListProcessed.apply {
+            clear()
+            intermenstrualBleedingList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.zoneOffset.toString(),
+                        time = rec.time.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        leanBodyMassListProcessed.apply {
+            clear()
+            leanBodyMassList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.mass.toString(),
+                        time = rec.time.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        menstruationFlowListProcessed.apply {
+            clear()
+            menstruationFlowList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.flow.toString(),
+                        time = rec.time.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        nutritionListProcessed.apply {
+            clear()
+            nutritionList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.energy.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        powerListProcessed.apply {
+            clear()
+            powerList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.samples.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        respiratoryRateListProcessed.apply {
+            clear()
+            respiratoryRateList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.rate.toString(),
+                        time = rec.time.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        restingHeartRateListProcessed.apply {
+            clear()
+            restingHeartRateList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.beatsPerMinute.toString(),
+                        time = rec.time.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+        skinTemperatureListProcessed.apply {
+            clear()
+            skinTemperatureList.forEach { rec ->
+                add(
+                    SampleRecord(
+                        value = rec.baseline?.inCelsius.toString(),
+                        time = rec.startTime.toString(),
+                        progress = 0,
+                        email = GlobalConfig.config?.email ?: ""
+                    )
+                )
+            }
+        }
+    }
 
-    // Remember the last error ID, such that it is possible to avoid re-launching the error
-    // notification for the same error when the screen is recomposed, or configuration changes etc.
+    // State for scanned config and export progress
+    var configState by remember { mutableStateOf<ConfigData?>(null) }
+    val exportProgressMap = remember { mutableStateMapOf<DataType, Pair<Int, Int>>() }
+    var warningMessage by remember { mutableStateOf<String?>(null) }
+
+    // Handle UI state changes and errors
     val errorId = rememberSaveable { mutableStateOf(UUID.randomUUID()) }
-
     LaunchedEffect(uiState) {
-        // If the initial data load has not taken place, attempt to load the data.
         if (uiState is SleepSessionViewModel.UiState.Uninitialized) {
             onPermissionsResult()
         }
-
-        // The [SleepSessionViewModel.UiState] provides details of whether the last action was a
-        // success or resulted in an error. Where an error occurred, for example in reading and
-        // writing to Health Connect, the user is notified, and where the error is one that can be
-        // recovered from, an attempt to do so is made.
         if (uiState is SleepSessionViewModel.UiState.Error && errorId.value != uiState.uuid) {
             onError(uiState.exception)
             errorId.value = uiState.uuid
         }
     }
 
-    val changesDataTypes = setOf(
-        ExerciseSessionRecord::class,
-        StepsRecord::class,
-        SpeedRecord::class,
-        DistanceRecord::class,
-        TotalCaloriesBurnedRecord::class,
-        HeartRateRecord::class,
-        SleepSessionRecord::class,
-        WeightRecord::class,
-        BloodPressureRecord::class,
-        BodyTemperatureRecord::class,
-        HydrationRecord::class,
-        BodyFatRecord::class,
-        BoneMassRecord::class,
-        ActiveCaloriesBurnedRecord::class,
-        BasalMetabolicRateRecord::class
-    )
-    val permissions2 = changesDataTypes.map { HealthPermission.getReadPermission(it) }.toSet()
+    var isCameraMode by remember { mutableStateOf(false) }
+    val cameraPermissionState = rememberPermissionState(permission = Manifest.permission.CAMERA)
 
-    if (uiState != SleepSessionViewModel.UiState.Uninitialized) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Top,
-            horizontalAlignment = Alignment.CenterHorizontally
+    Box(modifier = Modifier.fillMaxSize()) {
+
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
         ) {
-            if (!permissionsGranted) {
-                item {
-                    Button(
-                        onClick = { onPermissionsLaunch(permissions2) }
-                    ) {
-                        Text(text = stringResource(R.string.permissions_button_label))
+
+            Text(text = "Email: ${configState?.email}", fontSize = 14.sp)
+        }
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Permissions and camera buttons
+        if (!permissionsGranted) {
+            Button(onClick = { onPermissionsLaunch(permissions) }) {
+                Text(text = stringResource(R.string.permissions_button_label))
+            }
+        }
+        Button(
+            onClick = {
+                if (ContextCompat.checkSelfPermission(
+                        context, Manifest.permission.CAMERA
+                    ) == PackageManager.PERMISSION_GRANTED
+                ) {
+                    isCameraMode = true
+                } else {
+                    cameraPermissionState.launchPermissionRequest()
+                }
+            }, modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(text = "Открыть камеру")
+        }
+        if (ContextCompat.checkSelfPermission(
+                context, Manifest.permission.CAMERA
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            Button(
+                onClick = {
+                    val intent = Intent(
+                        android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.fromParts("package", context.packageName, null)
+                    )
+                    context.startActivity(intent)
+                }, modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(text = "Предоставить разрешение в настройках")
+            }
+        }
+
+        // Progress bars for each data type
+        Column(
+            modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            val exports = listOf(
+                DataType.SLEEP_SESSION_DATA to sleepSessionsListProcessed,
+                DataType.BLOOD_OXYGEN_DATA to bloodOxygenListProcessed,
+                DataType.HEART_RATE_RECORD to heartRateListProcessed,
+                DataType.ACTIVE_CALORIES_BURNED_RECORD to activeCaloriesListProcessed,
+                DataType.BASAL_METABOLIC_RATE_RECORD to basalMetabolicRateListProcessed,
+                DataType.BLOOD_PRESSURE_RECORD to bloodPressureListProcessed,
+                DataType.BODY_FAT_RECORD to bodyFatListProcessed,
+                DataType.BODY_TEMPERATURE_RECORD to bodyTemperatureListProcessed,
+                DataType.BONE_MASS_RECORD to boneMassListProcessed,
+                DataType.DISTANCE_RECORD to distanceListProcessed,
+                DataType.EXERCISE_SESSION_RECORD to exerciseSessionListProcessed,
+                DataType.HYDRATION_RECORD to hydrationListProcessed,
+                DataType.SPEED_RECORD to speedListProcessed,
+                DataType.STEPS_RECORD to stepsListProcessed,
+                DataType.TOTAL_CALORIES_BURNED_RECORD to totalCaloriesBurnedListProcessed,
+                DataType.WEIGHT_RECORD to weightListProcessed,
+                DataType.BASAL_BODY_TEMPERATURE_RECORD to basalBodyTemperatureListProcessed,
+                DataType.FLOORS_CLIMBED_RECORD to floorsClimbedListProcessed,
+                DataType.INTERMENSTRUAL_BLEEDING_RECORD to intermenstrualBleedingListProcessed,
+                DataType.LEAN_BODY_MASS_RECORD to leanBodyMassListProcessed,
+                DataType.MENSTRUATION_FLOW_RECORD to menstruationFlowListProcessed,
+                DataType.NUTRITION_RECORD to nutritionListProcessed,
+                DataType.POWER_RECORD to powerListProcessed,
+                DataType.RESPIRATORY_RATE_RECORD to respiratoryRateListProcessed,
+                DataType.RESTING_HEART_RATE_RECORD to restingHeartRateListProcessed,
+                DataType.SKIN_TEMPERATURE_RECORD to skinTemperatureListProcessed
+            )
+            configState?.let {
+                // Individual progress bars
+                exports.forEach { (type, dataList) ->
+                    if (dataList.isNotEmpty()) {
+                        val (completed, total) = exportProgressMap[type] ?: (0 to dataList.size)
+                        var totalCompleted = exportProgressMap.values.sumOf { it.first }
+                        val totalTotal = exportProgressMap.values.sumOf { it.second }
+                        globalPercent =
+                            if (totalTotal > 0) (totalCompleted * 100 / totalTotal) else 0
+                        globalPercent =
+                            if (globalPercent < 100) (globalPercent + 1) else globalPercent
+                        exports.forEach { (_, dataList) ->
+                            dataList.forEach { rec ->
+                                rec.progress = globalPercent
+                                rec.email = configState?.email.toString()
+                            }
+                        }
+
+
+                        if (exportProgressMap[type] == null) {
+                            exportHealthDataInBackground(dataList, type) { completed, total ->
+                                exportProgressMap[type] = completed to total
+                            }
+                        }
+
+
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                text = type.typeName,
+                                fontSize = 16.sp,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center
+                            )
+                            LinearProgressIndicator(
+                                progress = if (total > 0) completed.toFloat() / total else 0f,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Text(
+                                text = "Выгружено $completed из $total",
+                                fontSize = 16.sp,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
-            } else {
-                item {
-                    Text(
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center,
-                        text = "test"
-                    )
+
+                // Общий прогресс всех типов
+                if (exportProgressMap.isNotEmpty()) {
+                    val totalCompleted = exportProgressMap.values.sumOf { it.first }
+                    val totalTotal = exportProgressMap.values.sumOf { it.second }
+
+
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "Общий прогресс: $globalPercent%",
+                            fontSize = 18.sp,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                        LinearProgressIndicator(
+//                                progress = if (totalTotal > 0) totalCompleted.toFloat() / totalTotal else 0f,
+                            progress = globalPercent / 100f, modifier = Modifier.fillMaxWidth()
+                        )
+                        Text(
+                            text = "Выгружено $totalCompleted из $totalTotal",
+                            fontSize = 18.sp,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
-
-
-                val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS)
-                    .minusYears(1)
-                    .withHour(12)
-                val firstDay = lastDay
-                    .minusYears(1).minusDays(30)
-
-                item {
-                    Text(
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center,
-                        text = "lastDay: $lastDay"
-                    )
-                    Text(
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center,
-                        text = "firstDay: $firstDay"
-                    )
-                }
-
-
-                items(sleepSessionsList) { session ->
-//                    Text(
-//                        modifier = Modifier.fillMaxWidth(),
-//                        textAlign = TextAlign.Center,
-//                        text = session.uid)
-
-
-                }
-
-                item {
-                    Text(
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center,
-                        text = "heart rate"
-                    )
-
-                }
-
-                items(HeartRateList) { session ->
-                    val startTime = session.startTime.toString()
-                    val data = session.value
-                    Text(
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center,
-                        text = "$startTime $data"
-                    )
-                }
-
             }
+        }
+    }
+
+    // Camera scanner overlay
+    if (isCameraMode) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            CameraScannerScreen(
+                onQRCodeScanned = { result ->
+                    warningMessage = null
+                    if (result.isNullOrEmpty()) {
+                        warningMessage = "Сканирование не дало результата."
+                        isCameraMode = false
+                    } else if (!isValidUrl(result)) {
+                        warningMessage = "Сканированный QR-код не содержит корректного URL."
+                        isCameraMode = false
+                    } else {
+                        sendRequestToUrl(result) { code, responseBody ->
+                            if (code !in 200..299) {
+                                warningMessage = "Запрос по сканированному URL вернул ошибку: $code"
+                            } else {
+                                val config = parseConfig(responseBody)
+                                if (config == null) {
+                                    warningMessage =
+                                        "Полученные данные не соответствуют ожидаемому формату."
+                                } else {
+                                    GlobalConfig.config = config
+                                    configState = config
+                                    warningMessage = null
+                                }
+                            }
+                        }
+                        isCameraMode = false
+                    }
+                })
+            Button(
+                onClick = { isCameraMode = false },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 16.dp)
+            ) {
+                Text(text = "Назад")
+            }
+
+
+        }
+
+
+    }
+
+    // Warning dialog
+    warningMessage?.let { msg ->
+        WarningDialog(message = msg) { warningMessage = null }
+    }
+}
+
+
+fun isValidUrl(url: String): Boolean {
+    return Patterns.WEB_URL.matcher(url).matches()
+}
+
+fun sendRequestToUrl(url: String, onResult: (code: Int, body: String) -> Unit) {
+    val client = OkHttpClient()
+    try {
+        val request = Request.Builder().url(url).build()
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                onResult(-1, "Ошибка запроса: ${e.localizedMessage}")
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val body = response.body?.string() ?: "Пустой ответ"
+                onResult(response.code, body)
+            }
+        })
+    } catch (e: Exception) {
+        onResult(-1, "Некорректный URL или ошибка: ${e.localizedMessage}")
+    }
+}
+
+fun parseConfig(response: String): ConfigData? {
+    return try {
+        Gson().fromJson(response, ConfigData::class.java)
+    } catch (e: Exception) {
+        null
+    }
+}
+
+fun refreshAccessToken(config: ConfigData): Boolean {
+    val client = OkHttpClient()
+    val gson = Gson()
+    val requestBodyJson = gson.toJson(mapOf("refresh_token" to config.refresh_token))
+    val jsonMediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+    val requestBody = requestBodyJson.toRequestBody(jsonMediaType)
+    val request = Request.Builder().url(config.refresh_token_url).post(requestBody)
+        .addHeader("accept", "application/json")
+        .addHeader("Authorization", "Bearer ${config.access_token}")
+        .addHeader("Content-Type", "application/json").build()
+    try {
+        client.newCall(request).execute().use { response ->
+            if (response.code == 200) {
+                val refreshedData =
+                    response.body?.string()?.let { Gson().fromJson(it, ConfigData::class.java) }
+                if (refreshedData != null && refreshedData.access_token.isNotEmpty()) {
+                    GlobalConfig.config = config.copy(access_token = refreshedData.access_token)
+                    return true
+                }
+            }
+        }
+    } catch (e: Exception) {
+        Log.e("RefreshToken", "Ошибка при обновлении access_token: ${e.localizedMessage}")
+    }
+    return false
+}
+
+suspend fun <T> exportDataInBatches(
+    dataType: DataType,
+    dataList: List<T>,
+    config: ConfigData,
+    onProgressUpdate: (completed: Int, total: Int) -> Unit
+) {
+    val gson = Gson()
+    val jsonMediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+    val client = OkHttpClient()
+    val total = dataList.size
+    var completed = 0
+    dataList.chunked(50).forEach { batch ->
+        val requestBody = gson.toJson(batch).toRequestBody(jsonMediaType)
+        fun buildRequest(token: String) =
+            Request.Builder().url("${config.post_here}/${dataType.typeName}").post(requestBody)
+                .addHeader("Authorization", "Bearer $token")
+                .addHeader("Content-Type", "application/json").build()
+
+        var request = buildRequest(config.access_token)
+        var responseSuccess = false
+        try {
+            client.newCall(request).execute().use { response ->
+                if (response.code in 200..299) {
+                    responseSuccess = true
+                } else if (response.code == 403 && refreshAccessToken(config)) {
+                    client.newCall(buildRequest(GlobalConfig.config!!.access_token)).execute()
+                        .use { resp2 ->
+                            if (resp2.code in 200..299) {
+                                responseSuccess = true
+                            }
+                        }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("ExportData", "Ошибка при выгрузке пачки: ${e.localizedMessage}")
+        }
+        completed += batch.size
+        withContext(Dispatchers.Main) {
+            onProgressUpdate(completed, total)
         }
     }
 }
 
-@Preview
 @Composable
-fun SleepSessionScreenPreview() {
-    HealthConnectTheme {
-        val end2 = ZonedDateTime.now()
-        val start2 = end2.minusHours(5)
-        val end1 = end2.minusDays(1)
-        val start1 = end1.minusHours(5)
-        AllInfoSessionScreen(
-            permissions = setOf(),
-            permissionsGranted = true,
-            sleepSessionsList = listOf(
-                SleepSessionData(
-                    uid = "123",
-                    title = "My sleep",
-                    notes = "Slept well",
-                    startTime = start1.toInstant(),
-                    startZoneOffset = start1.offset,
-                    endTime = end1.toInstant(),
-                    endZoneOffset = end1.offset,
-                    duration = Duration.between(start1, end1),
-                    stages = listOf(
-                        SleepSessionRecord.Stage(
-                            stage = SleepSessionRecord.STAGE_TYPE_DEEP,
-                            startTime = start1.toInstant(),
-                            endTime = end1.toInstant()
-                        )
-                    )
-                ),
-                SleepSessionData(
-                    uid = "123",
-                    title = "My sleep",
-                    notes = "Slept well",
-                    startTime = start2.toInstant(),
-                    startZoneOffset = start2.offset,
-                    endTime = end2.toInstant(),
-                    endZoneOffset = end2.offset,
-                    duration = Duration.between(start2, end2),
-                    stages = listOf(
-                        SleepSessionRecord.Stage(
-                            stage = SleepSessionRecord.STAGE_TYPE_DEEP,
-                            startTime = start2.toInstant(),
-                            endTime = end2.toInstant()
-                        )
-                    )
-                )
-            ),
-            uiState = SleepSessionViewModel.UiState.Done,
-            HeartRateList = listOf(
-                HeartRateData(
-                    uid = "123",
-                    startTime = start2.toInstant(),
-                    value = ""
-                )
-            )
+fun CameraScannerScreen(onQRCodeScanned: (String?) -> Unit) {
+    val context = LocalContext.current
+    val lifecycleOwner = context as? LifecycleOwner
+    var scannedResult by remember { mutableStateOf<String?>(null) }
+    Box(modifier = Modifier.fillMaxSize()) {
+        androidx.compose.ui.viewinterop.AndroidView(
+            factory = { ctx ->
+                PreviewView(ctx).also { previewView ->
+                    bindCameraUseCases(previewView, lifecycleOwner) { result ->
+                        result?.let {
+                            scannedResult = it
+                            onQRCodeScanned(it)
+                        }
+                    }
+                }
+            }, modifier = Modifier.fillMaxSize()
         )
+        scannedResult?.let {
+            Text(
+                text = "Найден QR-код: $it", modifier = Modifier.align(Alignment.BottomCenter)
+            )
+        }
+    }
+}
 
+private fun bindCameraUseCases(
+    previewView: PreviewView, lifecycleOwner: LifecycleOwner?, onBarcodeFound: (String?) -> Unit
+) {
+    val context = previewView.context
+    val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+    cameraProviderFuture.addListener({
+        val cameraProvider = cameraProviderFuture.get()
+        val preview = Preview.Builder().build().also {
+            it.setSurfaceProvider(previewView.surfaceProvider)
+        }
+        val imageAnalysis =
+            ImageAnalysis.Builder().setBackpressureStrategy(STRATEGY_KEEP_ONLY_LATEST).build()
+        imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(context)) { imageProxy ->
+            processImageProxy(imageProxy, onBarcodeFound)
+        }
+        try {
+            cameraProvider.unbindAll()
+            cameraProvider.bindToLifecycle(
+                lifecycleOwner!!, CameraSelector.DEFAULT_BACK_CAMERA, preview, imageAnalysis
+            )
+        } catch (exc: Exception) {
+            exc.printStackTrace()
+        }
+    }, ContextCompat.getMainExecutor(context))
+}
+
+private fun processImageProxy(
+    imageProxy: ImageProxy, onBarcodeFound: (String?) -> Unit
+) {
+    val mediaImage = imageProxy.image
+    if (mediaImage != null) {
+        val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+        val scanner = BarcodeScanning.getClient()
+        scanner.process(image).addOnSuccessListener { barcodes ->
+            onBarcodeFound(barcodes.firstOrNull()?.rawValue)
+        }.addOnFailureListener {
+            it.printStackTrace()
+            onBarcodeFound(null)
+        }.addOnCompleteListener {
+            imageProxy.close()
+        }
+    } else {
+        imageProxy.close()
     }
 }
