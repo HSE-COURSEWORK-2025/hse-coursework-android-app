@@ -616,14 +616,7 @@ fun AllInfoScreen(
     Box(modifier = Modifier.fillMaxSize()) {
 
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
-        ) {
 
-            Text(text = "Email: ${configState?.email}", fontSize = 14.sp)
-        }
     }
     Column(
         modifier = Modifier
