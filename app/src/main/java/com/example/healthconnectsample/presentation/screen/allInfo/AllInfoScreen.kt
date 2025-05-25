@@ -85,6 +85,19 @@ import kotlinx.coroutines.withContext
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 
+
+import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+
+
+
+
+
+
+
 // Определение enum для типов данных
 enum class DataType(val typeName: String) {
     SLEEP_SESSION_DATA("SleepSessionData"), BLOOD_OXYGEN_DATA("BloodOxygenData"), HEART_RATE_RECORD(
@@ -190,7 +203,8 @@ fun AllInfoScreen(
     powerList: List<PowerRecord>,
     respiratoryRateList: List<RespiratoryRateRecord>,
     restingHeartRateList: List<RestingHeartRateRecord>,
-    skinTemperatureList: List<SkinTemperatureRecord>
+    skinTemperatureList: List<SkinTemperatureRecord>,
+
 ) {
     val context = LocalContext.current
 
@@ -221,6 +235,38 @@ fun AllInfoScreen(
     val respiratoryRateListProcessed = remember { mutableStateListOf<SampleRecord>() }
     val restingHeartRateListProcessed = remember { mutableStateListOf<SampleRecord>() }
     val skinTemperatureListProcessed = remember { mutableStateListOf<SampleRecord>() }
+
+    val allProcessedLists = listOf(
+        sleepSessionsListProcessed,
+        bloodOxygenListProcessed,
+        heartRateListProcessed,
+        activeCaloriesListProcessed,
+        basalMetabolicRateListProcessed,
+        bloodPressureListProcessed,
+        bodyFatListProcessed,
+        bodyTemperatureListProcessed,
+        boneMassListProcessed,
+        distanceListProcessed,
+        exerciseSessionListProcessed,
+        hydrationListProcessed,
+        speedListProcessed,
+        stepsListProcessed,
+        totalCaloriesBurnedListProcessed,
+        weightListProcessed,
+        basalBodyTemperatureListProcessed,
+        floorsClimbedListProcessed,
+        intermenstrualBleedingListProcessed,
+        leanBodyMassListProcessed,
+        menstruationFlowListProcessed,
+        nutritionListProcessed,
+        powerListProcessed,
+        respiratoryRateListProcessed,
+        restingHeartRateListProcessed,
+        skinTemperatureListProcessed
+    )
+    // isLoading = true, пока все списки пусты
+    val isLoading = allProcessedLists.all { it.isEmpty() }
+
 
     LaunchedEffect(
         sleepSessionsList,
@@ -615,167 +661,186 @@ fun AllInfoScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
 
-
+    }
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-
-            Text(text = "Email: ${configState?.email}", fontSize = 14.sp)
-        }
-    }
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Permissions and camera buttons
-        if (!permissionsGranted) {
-            Button(onClick = { onPermissionsLaunch(permissions) }) {
-                Text(text = stringResource(R.string.permissions_button_label))
-            }
-        }
-        Button(
-            onClick = {
-                if (ContextCompat.checkSelfPermission(
-                        context, Manifest.permission.CAMERA
-                    ) == PackageManager.PERMISSION_GRANTED
-                ) {
-                    isCameraMode = true
-                } else {
-                    cameraPermissionState.launchPermissionRequest()
+            // Permissions and camera buttons
+            if (!permissionsGranted) {
+                Button(onClick = { onPermissionsLaunch(permissions) }) {
+                    Text(text = stringResource(R.string.permissions_button_label))
                 }
-            }, modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(text = "Открыть камеру")
-        }
-        if (ContextCompat.checkSelfPermission(
-                context, Manifest.permission.CAMERA
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
+            }
             Button(
                 onClick = {
-                    val intent = Intent(
-                        android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                        Uri.fromParts("package", context.packageName, null)
-                    )
-                    context.startActivity(intent)
+                    if (ContextCompat.checkSelfPermission(
+                            context, Manifest.permission.CAMERA
+                        ) == PackageManager.PERMISSION_GRANTED
+                    ) {
+                        isCameraMode = true
+                    } else {
+                        cameraPermissionState.launchPermissionRequest()
+                    }
                 }, modifier = Modifier.fillMaxWidth()
             ) {
-                Text(text = "Предоставить разрешение в настройках")
+                Text(text = "Открыть камеру")
             }
-        }
+            if (ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.CAMERA
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                Button(
+                    onClick = {
+                        val intent = Intent(
+                            android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.fromParts("package", context.packageName, null)
+                        )
+                        context.startActivity(intent)
+                    }, modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = "Предоставить разрешение в настройках")
+                }
+            }
 
-        // Progress bars for each data type
-        Column(
-            modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            val exports = listOf(
-                DataType.SLEEP_SESSION_DATA to sleepSessionsListProcessed,
-                DataType.BLOOD_OXYGEN_DATA to bloodOxygenListProcessed,
-                DataType.HEART_RATE_RECORD to heartRateListProcessed,
-                DataType.ACTIVE_CALORIES_BURNED_RECORD to activeCaloriesListProcessed,
-                DataType.BASAL_METABOLIC_RATE_RECORD to basalMetabolicRateListProcessed,
-                DataType.BLOOD_PRESSURE_RECORD to bloodPressureListProcessed,
-                DataType.BODY_FAT_RECORD to bodyFatListProcessed,
-                DataType.BODY_TEMPERATURE_RECORD to bodyTemperatureListProcessed,
-                DataType.BONE_MASS_RECORD to boneMassListProcessed,
-                DataType.DISTANCE_RECORD to distanceListProcessed,
-                DataType.EXERCISE_SESSION_RECORD to exerciseSessionListProcessed,
-                DataType.HYDRATION_RECORD to hydrationListProcessed,
-                DataType.SPEED_RECORD to speedListProcessed,
-                DataType.STEPS_RECORD to stepsListProcessed,
-                DataType.TOTAL_CALORIES_BURNED_RECORD to totalCaloriesBurnedListProcessed,
-                DataType.WEIGHT_RECORD to weightListProcessed,
-                DataType.BASAL_BODY_TEMPERATURE_RECORD to basalBodyTemperatureListProcessed,
-                DataType.FLOORS_CLIMBED_RECORD to floorsClimbedListProcessed,
-                DataType.INTERMENSTRUAL_BLEEDING_RECORD to intermenstrualBleedingListProcessed,
-                DataType.LEAN_BODY_MASS_RECORD to leanBodyMassListProcessed,
-                DataType.MENSTRUATION_FLOW_RECORD to menstruationFlowListProcessed,
-                DataType.NUTRITION_RECORD to nutritionListProcessed,
-                DataType.POWER_RECORD to powerListProcessed,
-                DataType.RESPIRATORY_RATE_RECORD to respiratoryRateListProcessed,
-                DataType.RESTING_HEART_RATE_RECORD to restingHeartRateListProcessed,
-                DataType.SKIN_TEMPERATURE_RECORD to skinTemperatureListProcessed
-            )
-            configState?.let {
-                // Individual progress bars
-                exports.forEach { (type, dataList) ->
-                    if (dataList.isNotEmpty()) {
-                        val (completed, total) = exportProgressMap[type] ?: (0 to dataList.size)
-                        var totalCompleted = exportProgressMap.values.sumOf { it.first }
+            // Progress bars for each data type
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                val exports = listOf(
+                    DataType.SLEEP_SESSION_DATA to sleepSessionsListProcessed,
+                    DataType.BLOOD_OXYGEN_DATA to bloodOxygenListProcessed,
+                    DataType.HEART_RATE_RECORD to heartRateListProcessed,
+                    DataType.ACTIVE_CALORIES_BURNED_RECORD to activeCaloriesListProcessed,
+                    DataType.BASAL_METABOLIC_RATE_RECORD to basalMetabolicRateListProcessed,
+                    DataType.BLOOD_PRESSURE_RECORD to bloodPressureListProcessed,
+                    DataType.BODY_FAT_RECORD to bodyFatListProcessed,
+                    DataType.BODY_TEMPERATURE_RECORD to bodyTemperatureListProcessed,
+                    DataType.BONE_MASS_RECORD to boneMassListProcessed,
+                    DataType.DISTANCE_RECORD to distanceListProcessed,
+                    DataType.EXERCISE_SESSION_RECORD to exerciseSessionListProcessed,
+                    DataType.HYDRATION_RECORD to hydrationListProcessed,
+                    DataType.SPEED_RECORD to speedListProcessed,
+                    DataType.STEPS_RECORD to stepsListProcessed,
+                    DataType.TOTAL_CALORIES_BURNED_RECORD to totalCaloriesBurnedListProcessed,
+                    DataType.WEIGHT_RECORD to weightListProcessed,
+                    DataType.BASAL_BODY_TEMPERATURE_RECORD to basalBodyTemperatureListProcessed,
+                    DataType.FLOORS_CLIMBED_RECORD to floorsClimbedListProcessed,
+                    DataType.INTERMENSTRUAL_BLEEDING_RECORD to intermenstrualBleedingListProcessed,
+                    DataType.LEAN_BODY_MASS_RECORD to leanBodyMassListProcessed,
+                    DataType.MENSTRUATION_FLOW_RECORD to menstruationFlowListProcessed,
+                    DataType.NUTRITION_RECORD to nutritionListProcessed,
+                    DataType.POWER_RECORD to powerListProcessed,
+                    DataType.RESPIRATORY_RATE_RECORD to respiratoryRateListProcessed,
+                    DataType.RESTING_HEART_RATE_RECORD to restingHeartRateListProcessed,
+                    DataType.SKIN_TEMPERATURE_RECORD to skinTemperatureListProcessed
+                )
+                configState?.let {
+                    // Individual progress bars
+                    exports.forEach { (type, dataList) ->
+                        if (dataList.isNotEmpty()) {
+                            val (completed, total) = exportProgressMap[type] ?: (0 to dataList.size)
+                            var totalCompleted = exportProgressMap.values.sumOf { it.first }
+                            val totalTotal = exportProgressMap.values.sumOf { it.second }
+                            globalPercent =
+                                if (totalTotal > 0) (totalCompleted * 100 / totalTotal) else 0
+                            globalPercent =
+                                if (globalPercent < 100) (globalPercent + 1) else globalPercent
+                            exports.forEach { (_, dataList) ->
+                                dataList.forEach { rec ->
+                                    rec.progress = globalPercent
+                                    rec.email = configState?.email.toString()
+                                }
+                            }
+
+
+                            if (exportProgressMap[type] == null) {
+                                exportHealthDataInBackground(dataList, type) { completed, total ->
+                                    exportProgressMap[type] = completed to total
+                                }
+                            }
+
+
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Text(
+                                    text = type.typeName,
+                                    fontSize = 16.sp,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Center
+                                )
+                                LinearProgressIndicator(
+                                    progress = if (total > 0) completed.toFloat() / total else 0f,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Text(
+                                    text = "Выгружено $completed из $total",
+                                    fontSize = 16.sp,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+
+                    // Общий прогресс всех типов
+                    if (exportProgressMap.isNotEmpty()) {
+                        val totalCompleted = exportProgressMap.values.sumOf { it.first }
                         val totalTotal = exportProgressMap.values.sumOf { it.second }
-                        globalPercent =
-                            if (totalTotal > 0) (totalCompleted * 100 / totalTotal) else 0
-                        globalPercent =
-                            if (globalPercent < 100) (globalPercent + 1) else globalPercent
-                        exports.forEach { (_, dataList) ->
-                            dataList.forEach { rec ->
-                                rec.progress = globalPercent
-                                rec.email = configState?.email.toString()
-                            }
-                        }
-
-
-                        if (exportProgressMap[type] == null) {
-                            exportHealthDataInBackground(dataList, type) { completed, total ->
-                                exportProgressMap[type] = completed to total
-                            }
-                        }
 
 
                         Column(modifier = Modifier.fillMaxWidth()) {
                             Text(
-                                text = type.typeName,
-                                fontSize = 16.sp,
+                                text = "Общий прогресс: $globalPercent%",
+                                fontSize = 18.sp,
                                 modifier = Modifier.fillMaxWidth(),
                                 textAlign = TextAlign.Center
                             )
                             LinearProgressIndicator(
-                                progress = if (total > 0) completed.toFloat() / total else 0f,
-                                modifier = Modifier.fillMaxWidth()
+//                                progress = if (totalTotal > 0) totalCompleted.toFloat() / totalTotal else 0f,
+                                progress = globalPercent / 100f, modifier = Modifier.fillMaxWidth()
                             )
                             Text(
-                                text = "Выгружено $completed из $total",
-                                fontSize = 16.sp,
+                                text = "Выгружено $totalCompleted из $totalTotal",
+                                fontSize = 18.sp,
                                 modifier = Modifier.fillMaxWidth(),
                                 textAlign = TextAlign.Center
                             )
                         }
                     }
                 }
-
-                // Общий прогресс всех типов
-                if (exportProgressMap.isNotEmpty()) {
-                    val totalCompleted = exportProgressMap.values.sumOf { it.first }
-                    val totalTotal = exportProgressMap.values.sumOf { it.second }
-
-
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = "Общий прогресс: $globalPercent%",
-                            fontSize = 18.sp,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
-                        LinearProgressIndicator(
-//                                progress = if (totalTotal > 0) totalCompleted.toFloat() / totalTotal else 0f,
-                            progress = globalPercent / 100f, modifier = Modifier.fillMaxWidth()
-                        )
-                        Text(
-                            text = "Выгружено $totalCompleted из $totalTotal",
-                            fontSize = 18.sp,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
             }
+
+
+//            if (isAllDataTypesExportComplete) {
+////        if (isLoading) {
+//            Box(
+//                modifier = Modifier
+//                    .fillMaxSize()
+//                    .background(Color(0x80000000)), // полупрозрачный чёрный фон
+//                contentAlignment = Alignment.Center
+//            ) {
+//                Column(
+//                    horizontalAlignment = Alignment.CenterHorizontally
+//                ) {
+//                    CircularProgressIndicator()
+//                    Spacer(modifier = Modifier.height(8.dp))
+//                    Text(
+//                        text = "Считывание данных...",
+//                        fontSize = 16.sp,
+//                        color = Color.White
+//                    )
+//                }
+//            }
+//        }
         }
-    }
+
+
+
+
 
     // Camera scanner overlay
     if (isCameraMode) {

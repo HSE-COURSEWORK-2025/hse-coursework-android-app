@@ -21,6 +21,7 @@ import android.content.pm.PackageManager
 import android.content.res.Resources.NotFoundException
 import android.os.Build
 import androidx.activity.result.contract.ActivityResultContract
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.HealthConnectClient.Companion.SDK_UNAVAILABLE
@@ -97,6 +98,10 @@ import kotlin.random.Random
 import kotlin.reflect.KClass
 import java.util.UUID
 
+import java.time.LocalDate
+
+import kotlinx.coroutines.delay
+
 
 
 // The minimum android level that can use Health Connect
@@ -105,6 +110,47 @@ const val MIN_SUPPORTED_SDK = Build.VERSION_CODES.O_MR1
 /** Demonstrates reading and writing from Health Connect. */
 class HealthConnectManager(private val context: Context) {
     private val healthConnectClient by lazy { HealthConnectClient.getOrCreate(context) }
+
+
+    private val dataTypesToTrack: Set<KClass<out Record>> = setOf(
+        HeartRateRecord::class,
+        OxygenSaturationRecord::class,
+        SleepSessionRecord::class,
+        DistanceRecord::class,
+        StepsRecord::class,
+        TotalCaloriesBurnedRecord::class,
+        WeightRecord::class,
+        ActiveCaloriesBurnedRecord::class,
+        BasalMetabolicRateRecord::class,
+        BloodPressureRecord::class,
+        BodyFatRecord::class,
+        BoneMassRecord::class,
+        HydrationRecord::class,
+        SpeedRecord::class,
+        ExerciseSessionRecord::class,
+        BloodGlucoseRecord::class,
+        BasalBodyTemperatureRecord::class,
+        FloorsClimbedRecord::class,
+        CervicalMucusRecord::class,
+        LeanBodyMassRecord::class,
+        MenstruationFlowRecord::class,
+        NutritionRecord::class,
+        PlannedExerciseSessionRecord::class,
+        PowerRecord::class,
+        RespiratoryRateRecord::class,
+        RestingHeartRateRecord::class,
+        SkinTemperatureRecord::class,
+        Vo2MaxRecord::class,
+        WheelchairPushesRecord::class,
+        IntermenstrualBleedingRecord::class,
+        HeightRecord::class,
+        BodyWaterMassRecord::class,
+        HeartRateVariabilityRmssdRecord::class,
+        MenstruationPeriodRecord::class,
+        OvulationTestRecord::class
+    )
+
+
 
     val healthConnectCompatibleApps by lazy {
         val intent = Intent("androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE")
@@ -162,9 +208,9 @@ class HealthConnectManager(private val context: Context) {
 
 
     suspend fun readExerciseSessions(): List<ExerciseSessionRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS)
+        val lastDay = ZonedDateTime.now()
             .minusDays(1)
-            .withHour(12)
+            
         val firstDay = lastDay
             .minusDays(7)
 
@@ -173,14 +219,15 @@ class HealthConnectManager(private val context: Context) {
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant())
         )
         val response = healthConnectClient.readRecords(request)
+
         return response.records
     }
 
 
     suspend fun readSleepSessions(): List<SleepSessionData> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS)
+        val lastDay = ZonedDateTime.now()
             .minusDays(1)
-            .withHour(12)
+            
         val firstDay = lastDay
             .minusDays(7)
 
@@ -212,52 +259,15 @@ class HealthConnectManager(private val context: Context) {
                 )
             )
         }
+
         return sessions
     }
 
-
-
-    suspend fun readHeartRate(): List<HeartRateData> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS)
-            .withHour(12)
-        val firstDay = lastDay
-            .minusDays(30)
-
-        val sessions = mutableListOf<HeartRateData>()
-        val hearRateRequest = ReadRecordsRequest(
-            recordType = HeartRateRecord::class,
-            timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
-            ascendingOrder = false
-        )
-        val heartRateRecords = healthConnectClient.readRecords(hearRateRequest)
-        heartRateRecords.records.forEach { session ->
-//            val sessionTimeFilter = TimeRangeFilter.between(session.startTime, session.endTime)
-//            val durationAggregateRequest = AggregateRequest(
-//                metrics = setOf(HeartRateRecord.BPM_AVG, HeartRateRecord.BPM_MAX, HeartRateRecord.BPM_MIN),
-//                timeRangeFilter = sessionTimeFilter
-//            )
-//            val aggregateResponse = healthConnectClient.aggregate(durationAggregateRequest)
-
-            for (item in session.samples) {
-                sessions.add(
-                    HeartRateData(
-                        uid = UUID.randomUUID().toString(),
-                        startTime = item.time,
-                        value = item.beatsPerMinute.toString()
-
-                    )
-                )
-            }
-
-
-        }
-        return sessions
-    }
 
 
     suspend fun readBloodOxygen(): List<BloodOxygenData> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS)
-            .withHour(12)
+        val lastDay = ZonedDateTime.now()
+            
         val firstDay = lastDay
             .minusDays(30)
 
@@ -278,6 +288,7 @@ class HealthConnectManager(private val context: Context) {
                 )
             )
         }
+
         return sessions
     }
 
@@ -287,13 +298,15 @@ class HealthConnectManager(private val context: Context) {
 
 
     suspend fun readDistanceRecords(): List<DistanceRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = DistanceRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
+
         return healthConnectClient.readRecords(request).records
     }
 
@@ -301,27 +314,59 @@ class HealthConnectManager(private val context: Context) {
      * Возвращает записи типа HeartRateRecord.
      */
     suspend fun readHeartRateRecords(): List<HeartRateRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
-        val firstDay = lastDay.minusDays(30)
-        val request = ReadRecordsRequest(
-            recordType = HeartRateRecord::class,
-            timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
-            ascendingOrder = false
-        )
-        return healthConnectClient.readRecords(request).records
+        val zone = ZonedDateTime.now().zone
+        var currentDate = LocalDate.of(2025, 1, 1)
+        val today = LocalDate.now(zone)
+        val allRecords = mutableListOf<HeartRateRecord>()
+
+        while (!currentDate.isAfter(today)) {
+            val startInstant = currentDate.atStartOfDay(zone).toInstant()
+            val endInstant = currentDate.plusDays(1).atStartOfDay(zone).toInstant()
+
+            val request = ReadRecordsRequest(
+                recordType      = HeartRateRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(startInstant, endInstant),
+                ascendingOrder  = false
+            )
+
+            var attempt = 0
+            var backoffMs = 1L
+
+            // Пытаемся выполнить запрос, при любой ошибке — retry с backoff
+            while (true) {
+                try {
+                    val response = healthConnectClient.readRecords(request)
+                    allRecords += response.records
+                    break
+                } catch (e: Exception) {
+                    if (true) {
+//                        delay(backoffMs)
+                        attempt++
+                    }
+                }
+            }
+
+            // небольшой throttle между днями
+//            delay(1L)
+            currentDate = currentDate.plusDays(1)
+        }
+
+
+        return allRecords
     }
 
     /**
      * Возвращает записи типа OxygenSaturationRecord.
      */
     suspend fun readOxygenSaturationRecords(): List<OxygenSaturationRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = OxygenSaturationRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
@@ -329,13 +374,14 @@ class HealthConnectManager(private val context: Context) {
      * Возвращает записи типа SleepSessionRecord.
      */
     suspend fun readSleepSessionRecords(): List<SleepSessionRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = SleepSessionRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
@@ -343,13 +389,14 @@ class HealthConnectManager(private val context: Context) {
      * Возвращает записи типа SpeedRecord.
      */
     suspend fun readSpeedRecords(): List<SpeedRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = SpeedRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
@@ -357,13 +404,14 @@ class HealthConnectManager(private val context: Context) {
      * Возвращает записи типа StepsRecord.
      */
     suspend fun readStepsRecords(): List<StepsRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = StepsRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
@@ -371,13 +419,14 @@ class HealthConnectManager(private val context: Context) {
      * Возвращает записи типа TotalCaloriesBurnedRecord.
      */
     suspend fun readTotalCaloriesBurnedRecords(): List<TotalCaloriesBurnedRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = TotalCaloriesBurnedRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
@@ -385,355 +434,388 @@ class HealthConnectManager(private val context: Context) {
      * Возвращает записи типа WeightRecord.
      */
     suspend fun readWeightRecords(): List<WeightRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = WeightRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     // Функции для остальных Record-подобных классов
 
     suspend fun readActiveCaloriesBurnedRecords(): List<ActiveCaloriesBurnedRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = ActiveCaloriesBurnedRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readBasalBodyTemperatureRecords(): List<BasalBodyTemperatureRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = BasalBodyTemperatureRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readBasalMetabolicRateRecords(): List<BasalMetabolicRateRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = BasalMetabolicRateRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readBloodGlucoseRecords(): List<BloodGlucoseRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = BloodGlucoseRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readBloodPressureRecords(): List<BloodPressureRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = BloodPressureRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readBodyFatRecords(): List<BodyFatRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = BodyFatRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readBodyWaterMassRecords(): List<BodyWaterMassRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = BodyWaterMassRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readBoneMassRecords(): List<BoneMassRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = BoneMassRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readCervicalMucusRecords(): List<CervicalMucusRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = CervicalMucusRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readCyclingPedalingCadenceRecords(): List<CyclingPedalingCadenceRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = CyclingPedalingCadenceRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readElevationGainedRecords(): List<ElevationGainedRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = ElevationGainedRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readFloorsClimbedRecords(): List<FloorsClimbedRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = FloorsClimbedRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readHeartRateVariabilityRmssdRecords(): List<HeartRateVariabilityRmssdRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = HeartRateVariabilityRmssdRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readHeightRecords(): List<HeightRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = HeightRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readHydrationRecords(): List<HydrationRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = HydrationRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readIntermenstrualBleedingRecords(): List<IntermenstrualBleedingRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = IntermenstrualBleedingRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readLeanBodyMassRecords(): List<LeanBodyMassRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = LeanBodyMassRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readMenstruationFlowRecords(): List<MenstruationFlowRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = MenstruationFlowRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readMenstruationPeriodRecords(): List<MenstruationPeriodRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = MenstruationPeriodRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readNutritionRecords(): List<NutritionRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = NutritionRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readOvulationTestRecords(): List<OvulationTestRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = OvulationTestRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readPlannedExerciseSessionRecords(): List<PlannedExerciseSessionRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = PlannedExerciseSessionRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readPowerRecords(): List<PowerRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = PowerRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readRespiratoryRateRecords(): List<RespiratoryRateRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = RespiratoryRateRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readRestingHeartRateRecords(): List<RestingHeartRateRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = RestingHeartRateRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readSexualActivityRecords(): List<SexualActivityRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = SexualActivityRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readSkinTemperatureRecords(): List<SkinTemperatureRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = SkinTemperatureRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readVo2MaxRecords(): List<Vo2MaxRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = Vo2MaxRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
     suspend fun readWheelchairPushesRecords(): List<WheelchairPushesRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = WheelchairPushesRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
             ascendingOrder = false
         )
+
         return healthConnectClient.readRecords(request).records
     }
 
 
-
-
+//
+//    fun isAllDataTypesExportComplete(): Boolean {
+//        return exportCompletionFlags.values.all { it }
+//    }
 
 
     suspend fun readWeightInputs(): List<WeightRecord> {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = ReadRecordsRequest(
             recordType = WeightRecord::class,
             timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant())
         )
         val response = healthConnectClient.readRecords(request)
+
         return response.records
     }
 
     suspend fun computeWeeklyAverage(): Mass? {
-        val lastDay = ZonedDateTime.now().truncatedTo(ChronoUnit.DAYS).withHour(12)
+        val lastDay = ZonedDateTime.now()
         val firstDay = lastDay.minusDays(30)
         val request = AggregateRequest(
             metrics = setOf(WeightRecord.WEIGHT_AVG),
