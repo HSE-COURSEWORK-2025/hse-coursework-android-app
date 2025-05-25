@@ -12,7 +12,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.healthconnectsample.data.HealthConnectManager
 import com.example.healthconnectsample.data.SleepSessionData
-import com.example.healthconnectsample.data.HeartRateData
 import com.example.healthconnectsample.data.BloodOxygenData
 import kotlinx.coroutines.launch
 import java.io.IOException
@@ -176,13 +175,15 @@ class SleepSessionViewModel(private val healthConnectManager: HealthConnectManag
 
     val permissionsLauncher = healthConnectManager.requestPermissionsActivityContract()
 
+//    val isAllDataTypesExportComplete = healthConnectManager.isAllDataTypesExportComplete()
+
+
     fun initialLoad() {
         viewModelScope.launch {
             tryWithPermissionsCheck {
                 // Чтение только тех типов данных, которые нужны
                 sessionsList.value = healthConnectManager.readSleepSessions()
-                heartRateList.value = healthConnectManager.readHeartRateRecords()
-                bloodOxygenList.value = healthConnectManager.readBloodOxygen()
+
 
                 activeCaloriesList.value = healthConnectManager.readActiveCaloriesBurnedRecords()
                 basalMetabolicRateList.value = healthConnectManager.readBasalMetabolicRateRecords()
@@ -211,7 +212,11 @@ class SleepSessionViewModel(private val healthConnectManager: HealthConnectManag
                 restingHeartRateList.value = healthConnectManager.readRestingHeartRateRecords()
                 skinTemperatureList.value = healthConnectManager.readSkinTemperatureRecords()
 
+                heartRateList.value = healthConnectManager.readHeartRateRecords()
+                bloodOxygenList.value = healthConnectManager.readBloodOxygen()
+
                 permissionsGranted.value = healthConnectManager.hasAllPermissions(permissions)
+
             }
         }
     }
@@ -241,7 +246,7 @@ class SleepSessionViewModel(private val healthConnectManager: HealthConnectManag
     }
 }
 
-class SleepSessionViewModelFactory(
+class HealthConnectDataViewModelFactory(
     private val healthConnectManager: HealthConnectManager
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {

@@ -31,7 +31,7 @@ import com.example.healthconnectsample.presentation.screen.changes.DifferentialC
 import com.example.healthconnectsample.presentation.screen.changes.DifferentialChangesViewModelFactory
 import com.example.healthconnectsample.presentation.screen.allInfo.AllInfoScreen
 import com.example.healthconnectsample.presentation.screen.allInfo.SleepSessionViewModel
-import com.example.healthconnectsample.presentation.screen.allInfo.SleepSessionViewModelFactory
+import com.example.healthconnectsample.presentation.screen.allInfo.HealthConnectDataViewModelFactory
 import com.example.healthconnectsample.showExceptionSnackbar
 
 /**
@@ -52,7 +52,7 @@ fun HealthConnectNavigation(
 
         composable(Screen.WelcomeScreen.route) {
             val viewModel: SleepSessionViewModel = viewModel(
-                factory = SleepSessionViewModelFactory(
+                factory = HealthConnectDataViewModelFactory(
                     healthConnectManager = healthConnectManager
                 )
             )
@@ -85,6 +85,7 @@ fun HealthConnectNavigation(
             val respiratoryRateList by viewModel.respiratoryRateList
             val restingHeartRateList by viewModel.restingHeartRateList
             val skinTemperatureList by viewModel.skinTemperatureList
+
 
 
             val onPermissionsResult = { viewModel.initialLoad() }
@@ -131,7 +132,8 @@ fun HealthConnectNavigation(
                 },
                 onPermissionsLaunch = { values ->
                     permissionsLauncher.launch(values)
-                }
+                },
+//                isAllDataTypesExportComplete = isAllDataTypesExportComplete
 
             )
 
