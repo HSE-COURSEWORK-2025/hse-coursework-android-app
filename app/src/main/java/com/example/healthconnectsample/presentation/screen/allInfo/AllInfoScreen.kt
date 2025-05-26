@@ -88,7 +88,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.ui.graphics.Color
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
+import java.time.format.DateTimeFormatter
 
 // Определение enum для типов данных
 enum class DataType(val typeName: String) {
@@ -807,6 +812,20 @@ fun AllInfoScreen(
                             }
 
 
+
+
+
+//
+//                            LaunchedEffect(globalPercent) {
+//                                // вы в IO-контексте, потому что execute() blocking
+//                                withContext(Dispatchers.IO) {
+//                                    sendProgressUpdate(globalPercent, GlobalConfig.config!!.email)
+//                                }
+//                            }
+                                sendProgressUpdateAsync(globalPercent, GlobalConfig.config!!.email)
+
+
+
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 Text(
                                     text = type.typeName,
@@ -1012,10 +1031,21 @@ suspend fun <T> exportDataInBatches(
     var completed = 0
     dataList.chunked(50).forEach { batch ->
         val requestBody = gson.toJson(batch).toRequestBody(jsonMediaType)
+        val sentAt = OffsetDateTime.now(ZoneOffset.UTC)
+            .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+
+        val url = "${config.post_here}/${dataType.typeName}".toHttpUrlOrNull()!!
+            .newBuilder()
+            .addQueryParameter("sent_at", sentAt)
+            .build()
+
         fun buildRequest(token: String) =
-            Request.Builder().url("${config.post_here}/${dataType.typeName}").post(requestBody)
+            Request.Builder()
+                .url(url)
+                .post(requestBody)
                 .addHeader("Authorization", "Bearer $token")
-                .addHeader("Content-Type", "application/json").build()
+                .addHeader("Content-Type", "application/json")
+                .build()
 
         var request = buildRequest(config.access_token)
         var responseSuccess = false
@@ -1036,6 +1066,13 @@ suspend fun <T> exportDataInBatches(
             Log.e("ExportData", "Ошибка при выгрузке пачки: ${e.localizedMessage}")
         }
         completed += batch.size
+
+
+
+
+
+
+
         withContext(Dispatchers.Main) {
             onProgressUpdate(completed, total)
         }
@@ -1112,4 +1149,61 @@ private fun processImageProxy(
     } else {
         imageProxy.close()
     }
+}
+
+
+suspend fun sendProgressUpdate(progress: Int, email: String) {
+    val client = OkHttpClient()
+    val gson = Gson()
+    val jsonMediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+    val payload = mapOf("progress" to progress.toString(), "email" to email)
+    val body = gson.toJson(payload).toRequestBody(jsonMediaType)
+
+    val url = "http://hse-coursework-health.ru/data-collection-api/api/v1/post_data/progress"
+        .toHttpUrlOrNull()!!
+
+    val req = Request.Builder()
+        .url(url)
+        .post(body)
+        .addHeader("accept", "application/json")
+        .addHeader("Content-Type", "application/json")
+        .build()
+
+    client.newCall(req).execute().use { resp ->
+        if (!resp.isSuccessful) {
+            Log.e("ProgressUpdate", "Failed: ${resp.code}")
+        }
+    }
+}
+
+
+fun sendProgressUpdateAsync(progress: Int, email: String) {
+    val client = OkHttpClient()
+    val gson = Gson()
+    val jsonMediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+    val payload = mapOf("progress" to progress.toString(), "email" to email)
+    val body = gson.toJson(payload).toRequestBody(jsonMediaType)
+
+    val url = "http://hse-coursework-health.ru/data-collection-api/api/v1/post_data/progress"
+        .toHttpUrlOrNull()!!
+
+    val req = Request.Builder()
+        .url(url)
+        .post(body)
+        .addHeader("accept", "application/json")
+        .addHeader("Content-Type", "application/json")
+        .build()
+
+    client.newCall(req).enqueue(object : Callback {
+        override fun onFailure(call: Call, e: IOException) {
+            Log.e("ProgressUpdate", "Async failed: ${e.localizedMessage}")
+        }
+
+        override fun onResponse(call: Call, response: Response) {
+            if (!response.isSuccessful) {
+                Log.e("ProgressUpdate", "Async failed: ${response.code}")
+            }
+            response.close()
+        }
+    })
 }
