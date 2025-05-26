@@ -812,6 +812,21 @@ fun AllInfoScreen(
                         }
                     }
                 }
+
+
+
+                if (configState != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Внимание: на прогресс-барах пока могут отображаться не все данные. Полная выгрузка " +
+                                "может занять до 5 минут.",
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                    )
+                }
             }
 
 
