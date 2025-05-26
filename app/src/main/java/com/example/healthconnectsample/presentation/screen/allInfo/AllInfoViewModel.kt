@@ -178,48 +178,162 @@ class SleepSessionViewModel(private val healthConnectManager: HealthConnectManag
 //    val isAllDataTypesExportComplete = healthConnectManager.isAllDataTypesExportComplete()
 
 
+
+    private val totalJobs = listOf(
+        "readSleepSessions",
+        "readActiveCaloriesBurnedRecords",
+        "readBasalMetabolicRateRecords",
+        "readBloodPressureRecords",
+        "readBodyFatRecords",
+        "readBoneMassRecords",
+        "readDistanceRecords",
+        "readExerciseSessions",
+        "readFloorsClimbedRecords",
+        "readHydrationRecords",
+        "readSpeedRecords",
+        "readStepsRecords",
+        "readTotalCaloriesBurnedRecords",
+        "readWeightInputs",
+        "readBasalBodyTemperatureRecords",
+        "readIntermenstrualBleedingRecords",
+        "readLeanBodyMassRecords",
+        "readMenstruationFlowRecords",
+        "readNutritionRecords",
+        "readOxygenSaturationRecords",
+        "readPowerRecords",
+        "readRespiratoryRateRecords",
+        "readRestingHeartRateRecords",
+        "readSkinTemperatureRecords",
+        "readHeartRateRecords",
+        "readBloodOxygen"
+    ).size
+
+    var completedJobs by mutableStateOf(0)
+        private set
+
+
+
+
+
+
+
     fun initialLoad() {
         viewModelScope.launch {
             tryWithPermissionsCheck {
                 // Чтение только тех типов данных, которые нужны
+                completedJobs = 0
+
                 sessionsList.value = healthConnectManager.readSleepSessions()
+                completedJobs++
 
+                activeCaloriesList.value =
+                    healthConnectManager.readActiveCaloriesBurnedRecords()
+                completedJobs++
 
-                activeCaloriesList.value = healthConnectManager.readActiveCaloriesBurnedRecords()
-                basalMetabolicRateList.value = healthConnectManager.readBasalMetabolicRateRecords()
-                bloodPressureList.value = healthConnectManager.readBloodPressureRecords()
-                bodyFatList.value = healthConnectManager.readBodyFatRecords()
-                boneMassList.value = healthConnectManager.readBoneMassRecords()
-                distanceList.value = healthConnectManager.readDistanceRecords()
-                exerciseSessionList.value = healthConnectManager.readExerciseSessions()
-                floorsClimbedList.value = healthConnectManager.readFloorsClimbedRecords()
-                hydrationList.value = healthConnectManager.readHydrationRecords()
-                speedList.value = healthConnectManager.readSpeedRecords()
-                stepsList.value = healthConnectManager.readStepsRecords()
+                basalMetabolicRateList.value =
+                    healthConnectManager.readBasalMetabolicRateRecords()
+                completedJobs++
+
+                bloodPressureList.value =
+                    healthConnectManager.readBloodPressureRecords()
+                completedJobs++
+
+                bodyFatList.value =
+                    healthConnectManager.readBodyFatRecords()
+                completedJobs++
+
+                boneMassList.value =
+                    healthConnectManager.readBoneMassRecords()
+                completedJobs++
+
+                distanceList.value =
+                    healthConnectManager.readDistanceRecords()
+                completedJobs++
+
+                exerciseSessionList.value =
+                    healthConnectManager.readExerciseSessions()
+                completedJobs++
+
+                floorsClimbedList.value =
+                    healthConnectManager.readFloorsClimbedRecords()
+                completedJobs++
+
+                hydrationList.value =
+                    healthConnectManager.readHydrationRecords()
+                completedJobs++
+
+                speedList.value =
+                    healthConnectManager.readSpeedRecords()
+                completedJobs++
+
+                stepsList.value =
+                    healthConnectManager.readStepsRecords()
+                completedJobs++
+
                 totalCaloriesBurnedList.value =
                     healthConnectManager.readTotalCaloriesBurnedRecords()
-                weightList.value = healthConnectManager.readWeightInputs()
+                completedJobs++
+
+                weightList.value =
+                    healthConnectManager.readWeightInputs()
+                completedJobs++
+
                 basalBodyTemperatureList.value =
                     healthConnectManager.readBasalBodyTemperatureRecords()
+                completedJobs++
+
                 intermenstrualBleedingList.value =
                     healthConnectManager.readIntermenstrualBleedingRecords()
-                leanBodyMassList.value = healthConnectManager.readLeanBodyMassRecords()
-                menstruationFlowList.value = healthConnectManager.readMenstruationFlowRecords()
-                nutritionList.value = healthConnectManager.readNutritionRecords()
-                oxygenSaturationList.value = healthConnectManager.readOxygenSaturationRecords()
-                powerList.value = healthConnectManager.readPowerRecords()
-                respiratoryRateList.value = healthConnectManager.readRespiratoryRateRecords()
-                restingHeartRateList.value = healthConnectManager.readRestingHeartRateRecords()
-                skinTemperatureList.value = healthConnectManager.readSkinTemperatureRecords()
+                completedJobs++
 
-                heartRateList.value = healthConnectManager.readHeartRateRecords()
-                bloodOxygenList.value = healthConnectManager.readBloodOxygen()
+                leanBodyMassList.value =
+                    healthConnectManager.readLeanBodyMassRecords()
+                completedJobs++
 
-                permissionsGranted.value = healthConnectManager.hasAllPermissions(permissions)
+                menstruationFlowList.value =
+                    healthConnectManager.readMenstruationFlowRecords()
+                completedJobs++
+
+                nutritionList.value =
+                    healthConnectManager.readNutritionRecords()
+                completedJobs++
+
+                oxygenSaturationList.value =
+                    healthConnectManager.readOxygenSaturationRecords()
+                completedJobs++
+
+                powerList.value =
+                    healthConnectManager.readPowerRecords()
+                completedJobs++
+
+                respiratoryRateList.value =
+                    healthConnectManager.readRespiratoryRateRecords()
+                completedJobs++
+
+                restingHeartRateList.value =
+                    healthConnectManager.readRestingHeartRateRecords()
+                completedJobs++
+
+                skinTemperatureList.value =
+                    healthConnectManager.readSkinTemperatureRecords()
+                completedJobs++
+
+                heartRateList.value =
+                    healthConnectManager.readHeartRateRecords()
+                completedJobs++
+
+                bloodOxygenList.value =
+                    healthConnectManager.readBloodOxygen()
+                completedJobs++
+
+                permissionsGranted.value =
+                    healthConnectManager.hasAllPermissions(permissions)
 
             }
         }
     }
+
+    fun getTotalJobs(): Int = totalJobs
 
     private suspend fun tryWithPermissionsCheck(block: suspend () -> Unit) {
         permissionsGranted.value = healthConnectManager.hasAllPermissions(permissions)

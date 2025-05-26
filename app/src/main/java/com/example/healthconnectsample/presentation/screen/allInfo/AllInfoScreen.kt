@@ -21,8 +21,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.util.Log
 import android.util.Patterns
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts.GetContent
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST
@@ -30,6 +28,7 @@ import androidx.camera.core.Preview
 import androidx.camera.core.ImageProxy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -65,7 +64,6 @@ import com.example.healthconnectsample.R
 import com.example.healthconnectsample.data.SleepSessionData
 import com.example.healthconnectsample.data.BloodOxygenData
 import androidx.health.connect.client.records.*
-import androidx.health.connect.client.permission.HealthPermission
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.gson.Gson
@@ -86,16 +84,10 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 
 
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.foundation.background
-import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
-
-
-
-
-
+import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.ui.graphics.Color
 
 
 // Определение enum для типов данных
@@ -169,6 +161,36 @@ fun WarningDialog(message: String, onDismiss: () -> Unit) {
         })
 }
 
+
+@Composable
+fun OverlayProgress(
+    completedJobs: Int,
+    totalJobs: Int,
+    isExportInProgress: Boolean
+) {
+    if (completedJobs < totalJobs || isExportInProgress) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Color(0x80000000)),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                if (completedJobs < totalJobs) {
+                    val pct = completedJobs * 100f / totalJobs
+                    CircularProgressIndicator(progress = pct / 100f)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Считывание данных из Health Connect… $completedJobs из $totalJobs",
+                        color = Color.White
+                    )
+                } 
+            }
+        }
+    }
+}
+
+
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun AllInfoScreen(
@@ -204,8 +226,10 @@ fun AllInfoScreen(
     respiratoryRateList: List<RespiratoryRateRecord>,
     restingHeartRateList: List<RestingHeartRateRecord>,
     skinTemperatureList: List<SkinTemperatureRecord>,
+    completedJobs: Int,
+    totalJobs: Int,
 
-) {
+    ) {
     val context = LocalContext.current
 
     // Lists of processed sample records
@@ -236,408 +260,6 @@ fun AllInfoScreen(
     val restingHeartRateListProcessed = remember { mutableStateListOf<SampleRecord>() }
     val skinTemperatureListProcessed = remember { mutableStateListOf<SampleRecord>() }
 
-    val allProcessedLists = listOf(
-        sleepSessionsListProcessed,
-        bloodOxygenListProcessed,
-        heartRateListProcessed,
-        activeCaloriesListProcessed,
-        basalMetabolicRateListProcessed,
-        bloodPressureListProcessed,
-        bodyFatListProcessed,
-        bodyTemperatureListProcessed,
-        boneMassListProcessed,
-        distanceListProcessed,
-        exerciseSessionListProcessed,
-        hydrationListProcessed,
-        speedListProcessed,
-        stepsListProcessed,
-        totalCaloriesBurnedListProcessed,
-        weightListProcessed,
-        basalBodyTemperatureListProcessed,
-        floorsClimbedListProcessed,
-        intermenstrualBleedingListProcessed,
-        leanBodyMassListProcessed,
-        menstruationFlowListProcessed,
-        nutritionListProcessed,
-        powerListProcessed,
-        respiratoryRateListProcessed,
-        restingHeartRateListProcessed,
-        skinTemperatureListProcessed
-    )
-    // isLoading = true, пока все списки пусты
-    val isLoading = allProcessedLists.all { it.isEmpty() }
-
-
-    LaunchedEffect(
-        sleepSessionsList,
-        bloodOxygenList,
-        heartRateList,
-        activeCaloriesList,
-        basalMetabolicRateList,
-        bloodPressureList,
-        bodyFatList,
-        bodyTemperatureList,
-        boneMassList,
-        distanceList,
-        exerciseSessionList,
-        hydrationList,
-        speedList,
-        stepsList,
-        totalCaloriesBurnedList,
-        weightList,
-        basalBodyTemperatureList,
-        floorsClimbedList,
-        intermenstrualBleedingList,
-        leanBodyMassList,
-        menstruationFlowList,
-        nutritionList,
-        powerList,
-        respiratoryRateList,
-        restingHeartRateList,
-        skinTemperatureList
-    ) {
-        // Process each record type into SampleRecord lists with initial progress=0
-        sleepSessionsListProcessed.apply {
-            clear()
-            sleepSessionsList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.duration.toString(),
-                        time = rec.startTime.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        bloodOxygenListProcessed.apply {
-            clear()
-            bloodOxygenList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.value,
-                        time = rec.startTime.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        heartRateListProcessed.apply {
-            clear()
-            heartRateList.forEach { rec ->
-                rec.samples.forEach { sample ->
-                    add(
-                        SampleRecord(
-                            value = sample.beatsPerMinute.toString(),
-                            time = sample.time.toString(),
-                            progress = 0,
-                            email = GlobalConfig.config?.email ?: ""
-                        )
-                    )
-                }
-            }
-        }
-        activeCaloriesListProcessed.apply {
-            clear()
-            activeCaloriesList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.energy.inKilocalories.toString(),
-                        time = rec.startTime.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        basalMetabolicRateListProcessed.apply {
-            clear()
-            basalMetabolicRateList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.basalMetabolicRate.toString(),
-                        time = rec.time.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        bloodPressureListProcessed.apply {
-            clear()
-            bloodPressureList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = "${rec.systolic}/${rec.diastolic}",
-                        time = rec.time.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        bodyFatListProcessed.apply {
-            clear()
-            bodyFatList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.percentage.toString(),
-                        time = rec.time.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        bodyTemperatureListProcessed.apply {
-            clear()
-            bodyTemperatureList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.temperature.toString(),
-                        time = rec.time.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        boneMassListProcessed.apply {
-            clear()
-            boneMassList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.mass.inKilograms.toString(),
-                        time = rec.time.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        distanceListProcessed.apply {
-            clear()
-            distanceList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.distance.toString(),
-                        time = rec.startTime.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        exerciseSessionListProcessed.apply {
-            clear()
-            exerciseSessionList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.title.toString(),
-                        time = rec.startTime.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        hydrationListProcessed.apply {
-            clear()
-            hydrationList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.volume.toString(),
-                        time = rec.startTime.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        speedListProcessed.apply {
-            clear()
-            speedList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.samples.toString(),
-                        time = rec.startTime.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        stepsListProcessed.apply {
-            clear()
-            stepsList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.count.toString(),
-                        time = rec.startTime.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        totalCaloriesBurnedListProcessed.apply {
-            clear()
-            totalCaloriesBurnedList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.energy.inKilocalories.toString(),
-                        time = rec.startTime.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        weightListProcessed.apply {
-            clear()
-            weightList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.weight.toString(),
-                        time = rec.time.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        basalBodyTemperatureListProcessed.apply {
-            clear()
-            basalBodyTemperatureList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.temperature.toString(),
-                        time = rec.time.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        floorsClimbedListProcessed.apply {
-            clear()
-            floorsClimbedList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.floors.toString(),
-                        time = rec.startTime.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        intermenstrualBleedingListProcessed.apply {
-            clear()
-            intermenstrualBleedingList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.zoneOffset.toString(),
-                        time = rec.time.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        leanBodyMassListProcessed.apply {
-            clear()
-            leanBodyMassList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.mass.toString(),
-                        time = rec.time.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        menstruationFlowListProcessed.apply {
-            clear()
-            menstruationFlowList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.flow.toString(),
-                        time = rec.time.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        nutritionListProcessed.apply {
-            clear()
-            nutritionList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.energy.toString(),
-                        time = rec.startTime.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        powerListProcessed.apply {
-            clear()
-            powerList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.samples.toString(),
-                        time = rec.startTime.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        respiratoryRateListProcessed.apply {
-            clear()
-            respiratoryRateList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.rate.toString(),
-                        time = rec.time.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        restingHeartRateListProcessed.apply {
-            clear()
-            restingHeartRateList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.beatsPerMinute.toString(),
-                        time = rec.time.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-        skinTemperatureListProcessed.apply {
-            clear()
-            skinTemperatureList.forEach { rec ->
-                add(
-                    SampleRecord(
-                        value = rec.baseline?.inCelsius.toString(),
-                        time = rec.startTime.toString(),
-                        progress = 0,
-                        email = GlobalConfig.config?.email ?: ""
-                    )
-                )
-            }
-        }
-    }
 
     // State for scanned config and export progress
     var configState by remember { mutableStateOf<ConfigData?>(null) }
@@ -659,9 +281,412 @@ fun AllInfoScreen(
     var isCameraMode by remember { mutableStateOf(false) }
     val cameraPermissionState = rememberPermissionState(permission = Manifest.permission.CAMERA)
 
+
+
     Box(modifier = Modifier.fillMaxSize()) {
 
-    }
+
+        LaunchedEffect(
+            sleepSessionsList,
+            bloodOxygenList,
+            heartRateList,
+            activeCaloriesList,
+            basalMetabolicRateList,
+            bloodPressureList,
+            bodyFatList,
+            bodyTemperatureList,
+            boneMassList,
+            distanceList,
+            exerciseSessionList,
+            hydrationList,
+            speedList,
+            stepsList,
+            totalCaloriesBurnedList,
+            weightList,
+            basalBodyTemperatureList,
+            floorsClimbedList,
+            intermenstrualBleedingList,
+            leanBodyMassList,
+            menstruationFlowList,
+            nutritionList,
+            powerList,
+            respiratoryRateList,
+            restingHeartRateList,
+            skinTemperatureList
+        ) {
+            // Process each record type into SampleRecord lists with initial progress=0
+            sleepSessionsListProcessed.apply {
+                clear()
+                sleepSessionsList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.duration.toString(),
+                            time = rec.startTime.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            bloodOxygenListProcessed.apply {
+                clear()
+                bloodOxygenList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.value,
+                            time = rec.startTime.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            heartRateListProcessed.apply {
+                clear()
+                heartRateList.forEach { rec ->
+                    rec.samples.forEach { sample ->
+                        add(
+                            SampleRecord(
+                                value = sample.beatsPerMinute.toString(),
+                                time = sample.time.toString(),
+                                progress = 0,
+                                email = GlobalConfig.config?.email ?: ""
+                            )
+                        )
+                    }
+                }
+            }
+            activeCaloriesListProcessed.apply {
+                clear()
+                activeCaloriesList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.energy.inKilocalories.toString(),
+                            time = rec.startTime.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            basalMetabolicRateListProcessed.apply {
+                clear()
+                basalMetabolicRateList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.basalMetabolicRate.toString(),
+                            time = rec.time.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            bloodPressureListProcessed.apply {
+                clear()
+                bloodPressureList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = "${rec.systolic}/${rec.diastolic}",
+                            time = rec.time.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            bodyFatListProcessed.apply {
+                clear()
+                bodyFatList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.percentage.toString(),
+                            time = rec.time.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            bodyTemperatureListProcessed.apply {
+                clear()
+                bodyTemperatureList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.temperature.toString(),
+                            time = rec.time.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            boneMassListProcessed.apply {
+                clear()
+                boneMassList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.mass.inKilograms.toString(),
+                            time = rec.time.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            distanceListProcessed.apply {
+                clear()
+                distanceList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.distance.toString(),
+                            time = rec.startTime.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            exerciseSessionListProcessed.apply {
+                clear()
+                exerciseSessionList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.title.toString(),
+                            time = rec.startTime.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            hydrationListProcessed.apply {
+                clear()
+                hydrationList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.volume.toString(),
+                            time = rec.startTime.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            speedListProcessed.apply {
+                clear()
+                speedList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.samples.toString(),
+                            time = rec.startTime.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            stepsListProcessed.apply {
+                clear()
+                stepsList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.count.toString(),
+                            time = rec.startTime.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            totalCaloriesBurnedListProcessed.apply {
+                clear()
+                totalCaloriesBurnedList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.energy.inKilocalories.toString(),
+                            time = rec.startTime.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            weightListProcessed.apply {
+                clear()
+                weightList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.weight.toString(),
+                            time = rec.time.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            basalBodyTemperatureListProcessed.apply {
+                clear()
+                basalBodyTemperatureList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.temperature.toString(),
+                            time = rec.time.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            floorsClimbedListProcessed.apply {
+                clear()
+                floorsClimbedList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.floors.toString(),
+                            time = rec.startTime.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            intermenstrualBleedingListProcessed.apply {
+                clear()
+                intermenstrualBleedingList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.zoneOffset.toString(),
+                            time = rec.time.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            leanBodyMassListProcessed.apply {
+                clear()
+                leanBodyMassList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.mass.toString(),
+                            time = rec.time.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            menstruationFlowListProcessed.apply {
+                clear()
+                menstruationFlowList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.flow.toString(),
+                            time = rec.time.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            nutritionListProcessed.apply {
+                clear()
+                nutritionList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.energy.toString(),
+                            time = rec.startTime.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            powerListProcessed.apply {
+                clear()
+                powerList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.samples.toString(),
+                            time = rec.startTime.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            respiratoryRateListProcessed.apply {
+                clear()
+                respiratoryRateList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.rate.toString(),
+                            time = rec.time.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            restingHeartRateListProcessed.apply {
+                clear()
+                restingHeartRateList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.beatsPerMinute.toString(),
+                            time = rec.time.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+            skinTemperatureListProcessed.apply {
+                clear()
+                skinTemperatureList.forEach { rec ->
+                    add(
+                        SampleRecord(
+                            value = rec.baseline?.inCelsius.toString(),
+                            time = rec.startTime.toString(),
+                            progress = 0,
+                            email = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+        }
+
+
+
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+            if ((completedJobs < totalJobs) && configState == null) {
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .background(Color(0x80000000)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        val percent = completedJobs * 100f / totalJobs
+                        CircularProgressIndicator(progress = percent / 100f)
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = "Считывание данных из Health Connect… $completedJobs из $totalJobs",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+
+
+
+
+        Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -702,8 +727,16 @@ fun AllInfoScreen(
                         context.startActivity(intent)
                     }, modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(text = "Предоставить разрешение в настройках")
+                    Text(
+                        text = "Предоставить разрешение на камеру в настройках",
+                        textAlign = TextAlign.Center
+                    )
                 }
+                Text(
+                    text = "(для случая, когда не появляется окно выдачи разрешения на камеру)",
+                    textAlign = TextAlign.Center
+                )
+
             }
 
             // Progress bars for each data type
@@ -813,13 +846,19 @@ fun AllInfoScreen(
                     }
                 }
 
-
-
                 if (configState != null) {
+
+
                     Spacer(modifier = Modifier.height(8.dp))
+
+                    OverlayProgress(
+                        completedJobs = completedJobs,
+                        totalJobs = totalJobs,
+                        isExportInProgress = exportProgressMap.isNotEmpty()
+                    )
+
                     Text(
-                        text = "Внимание: на прогресс-барах пока могут отображаться не все данные. Полная выгрузка " +
-                                "может занять до 5 минут.",
+                        text = "Внимание: на прогресс-барах пока могут отображаться не все данные (пока идет считывание из Health Connect).",
                         fontSize = 14.sp,
                         textAlign = TextAlign.Center,
                         modifier = Modifier
@@ -830,31 +869,12 @@ fun AllInfoScreen(
             }
 
 
-//            if (isAllDataTypesExportComplete) {
-////        if (isLoading) {
-//            Box(
-//                modifier = Modifier
-//                    .fillMaxSize()
-//                    .background(Color(0x80000000)), // полупрозрачный чёрный фон
-//                contentAlignment = Alignment.Center
-//            ) {
-//                Column(
-//                    horizontalAlignment = Alignment.CenterHorizontally
-//                ) {
-//                    CircularProgressIndicator()
-//                    Spacer(modifier = Modifier.height(8.dp))
-//                    Text(
-//                        text = "Считывание данных...",
-//                        fontSize = 16.sp,
-//                        color = Color.White
-//                    )
-//                }
-//            }
-//        }
+        }
+
         }
 
 
-
+    }
 
 
     // Camera scanner overlay

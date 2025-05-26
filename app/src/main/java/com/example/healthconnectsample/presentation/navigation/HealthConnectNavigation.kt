@@ -87,7 +87,6 @@ fun HealthConnectNavigation(
             val skinTemperatureList by viewModel.skinTemperatureList
 
 
-
             val onPermissionsResult = { viewModel.initialLoad() }
             val permissionsLauncher =
                 rememberLauncherForActivityResult(viewModel.permissionsLauncher) {
@@ -133,9 +132,12 @@ fun HealthConnectNavigation(
                 onPermissionsLaunch = { values ->
                     permissionsLauncher.launch(values)
                 },
-//                isAllDataTypesExportComplete = isAllDataTypesExportComplete
 
-            )
+                completedJobs = viewModel.completedJobs,
+                totalJobs     = viewModel.getTotalJobs(),
+
+
+                )
 
         }
 
