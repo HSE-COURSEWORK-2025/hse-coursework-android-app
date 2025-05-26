@@ -176,8 +176,7 @@ fun OverlayProgress(
     if (completedJobs < totalJobs || isExportInProgress) {
         Box(
             Modifier
-                .fillMaxSize()
-                ,
+                .fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -676,170 +675,192 @@ fun AllInfoScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-            if ((completedJobs < totalJobs) && configState == null) {
-                Box(
-                    Modifier
-                        .matchParentSize()
-                        .background(Color(0x80000000)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        val percent = completedJobs * 100f / totalJobs
-                        CircularProgressIndicator(progress = percent / 100f)
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            text = "Считывание данных из Health Connect… $completedJobs из $totalJobs",
-                            color = Color.White,
-                            fontSize = 16.sp,
-                            textAlign = TextAlign.Center
-                        )
-                    }
+        if ((completedJobs < totalJobs) && configState == null) {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .background(Color(0x80000000)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    val percent = completedJobs * 100f / totalJobs
+                    CircularProgressIndicator(progress = percent / 100f)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "Считывание данных из Health Connect… $completedJobs из $totalJobs",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
+        }
 
 
 
 
         Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Permissions and camera buttons
-            if (!permissionsGranted) {
-                Button(onClick = { onPermissionsLaunch(permissions) }) {
-                    Text(text = stringResource(R.string.permissions_button_label))
-                }
-            }
-            Button(
-                onClick = {
-                    if (ContextCompat.checkSelfPermission(
-                            context, Manifest.permission.CAMERA
-                        ) == PackageManager.PERMISSION_GRANTED
-                    ) {
-                        isCameraMode = true
-                    } else {
-                        cameraPermissionState.launchPermissionRequest()
-                    }
-                }, modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(text = "Открыть камеру")
-            }
-            if (ContextCompat.checkSelfPermission(
-                    context, Manifest.permission.CAMERA
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                Button(
-                    onClick = {
-                        val intent = Intent(
-                            android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                            Uri.fromParts("package", context.packageName, null)
-                        )
-                        context.startActivity(intent)
-                    }, modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Предоставить разрешение на камеру в настройках",
-                        textAlign = TextAlign.Center
-                    )
-                }
-                Text(
-                    text = "(для случая, когда не появляется окно выдачи разрешения на камеру)",
-                    textAlign = TextAlign.Center
-                )
-
-            }
-
-            // Progress bars for each data type
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                val exports = listOf(
-                    DataType.SLEEP_SESSION_DATA to sleepSessionsListProcessed,
-                    DataType.BLOOD_OXYGEN_DATA to bloodOxygenListProcessed,
-                    DataType.HEART_RATE_RECORD to heartRateListProcessed,
-                    DataType.ACTIVE_CALORIES_BURNED_RECORD to activeCaloriesListProcessed,
-                    DataType.BASAL_METABOLIC_RATE_RECORD to basalMetabolicRateListProcessed,
-                    DataType.BLOOD_PRESSURE_RECORD to bloodPressureListProcessed,
-                    DataType.BODY_FAT_RECORD to bodyFatListProcessed,
-                    DataType.BODY_TEMPERATURE_RECORD to bodyTemperatureListProcessed,
-                    DataType.BONE_MASS_RECORD to boneMassListProcessed,
-                    DataType.DISTANCE_RECORD to distanceListProcessed,
-                    DataType.EXERCISE_SESSION_RECORD to exerciseSessionListProcessed,
-                    DataType.HYDRATION_RECORD to hydrationListProcessed,
-                    DataType.SPEED_RECORD to speedListProcessed,
-                    DataType.STEPS_RECORD to stepsListProcessed,
-                    DataType.TOTAL_CALORIES_BURNED_RECORD to totalCaloriesBurnedListProcessed,
-                    DataType.WEIGHT_RECORD to weightListProcessed,
-                    DataType.BASAL_BODY_TEMPERATURE_RECORD to basalBodyTemperatureListProcessed,
-                    DataType.FLOORS_CLIMBED_RECORD to floorsClimbedListProcessed,
-                    DataType.INTERMENSTRUAL_BLEEDING_RECORD to intermenstrualBleedingListProcessed,
-                    DataType.LEAN_BODY_MASS_RECORD to leanBodyMassListProcessed,
-                    DataType.MENSTRUATION_FLOW_RECORD to menstruationFlowListProcessed,
-                    DataType.NUTRITION_RECORD to nutritionListProcessed,
-                    DataType.POWER_RECORD to powerListProcessed,
-                    DataType.RESPIRATORY_RATE_RECORD to respiratoryRateListProcessed,
-                    DataType.RESTING_HEART_RATE_RECORD to restingHeartRateListProcessed,
-                    DataType.SKIN_TEMPERATURE_RECORD to skinTemperatureListProcessed
-                )
-                configState?.let {
-                    // Individual progress bars
-                    exports.forEach { (type, dataList) ->
-                        if (dataList.isNotEmpty()) {
-                            val (completed, total) = exportProgressMap[type] ?: (0 to dataList.size)
-                            var totalCompleted = exportProgressMap.values.sumOf { it.first }
-                            val totalTotal = exportProgressMap.values.sumOf { it.second }
-                            globalPercent =
-                                if (totalTotal > 0) (totalCompleted * 100 / totalTotal) else 0
-                            globalPercent =
-                                if (globalPercent < 100) (globalPercent + 1) else globalPercent
-                            exports.forEach { (_, dataList) ->
-                                dataList.forEach { rec ->
-                                    rec.progress = globalPercent
-                                    rec.email = configState?.email.toString()
+                // Permissions and camera buttons
+                if (!permissionsGranted) {
+                    Button(onClick = { onPermissionsLaunch(permissions) }) {
+                        Text(text = stringResource(R.string.permissions_button_label))
+                    }
+                }
+                Button(
+                    onClick = {
+                        if (ContextCompat.checkSelfPermission(
+                                context, Manifest.permission.CAMERA
+                            ) == PackageManager.PERMISSION_GRANTED
+                        ) {
+                            isCameraMode = true
+                        } else {
+                            cameraPermissionState.launchPermissionRequest()
+                        }
+                    }, modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = "Открыть камеру")
+                }
+                if (ContextCompat.checkSelfPermission(
+                        context, Manifest.permission.CAMERA
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    Button(
+                        onClick = {
+                            val intent = Intent(
+                                android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                Uri.fromParts("package", context.packageName, null)
+                            )
+                            context.startActivity(intent)
+                        }, modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Предоставить разрешение на камеру в настройках",
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    Text(
+                        text = "(для случая, когда не появляется окно выдачи разрешения на камеру)",
+                        textAlign = TextAlign.Center
+                    )
+
+                }
+
+                // Progress bars for each data type
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    val exports = listOf(
+                        DataType.SLEEP_SESSION_DATA to sleepSessionsListProcessed,
+                        DataType.BLOOD_OXYGEN_DATA to bloodOxygenListProcessed,
+                        DataType.HEART_RATE_RECORD to heartRateListProcessed,
+                        DataType.ACTIVE_CALORIES_BURNED_RECORD to activeCaloriesListProcessed,
+                        DataType.BASAL_METABOLIC_RATE_RECORD to basalMetabolicRateListProcessed,
+                        DataType.BLOOD_PRESSURE_RECORD to bloodPressureListProcessed,
+                        DataType.BODY_FAT_RECORD to bodyFatListProcessed,
+                        DataType.BODY_TEMPERATURE_RECORD to bodyTemperatureListProcessed,
+                        DataType.BONE_MASS_RECORD to boneMassListProcessed,
+                        DataType.DISTANCE_RECORD to distanceListProcessed,
+                        DataType.EXERCISE_SESSION_RECORD to exerciseSessionListProcessed,
+                        DataType.HYDRATION_RECORD to hydrationListProcessed,
+                        DataType.SPEED_RECORD to speedListProcessed,
+                        DataType.STEPS_RECORD to stepsListProcessed,
+                        DataType.TOTAL_CALORIES_BURNED_RECORD to totalCaloriesBurnedListProcessed,
+                        DataType.WEIGHT_RECORD to weightListProcessed,
+                        DataType.BASAL_BODY_TEMPERATURE_RECORD to basalBodyTemperatureListProcessed,
+                        DataType.FLOORS_CLIMBED_RECORD to floorsClimbedListProcessed,
+                        DataType.INTERMENSTRUAL_BLEEDING_RECORD to intermenstrualBleedingListProcessed,
+                        DataType.LEAN_BODY_MASS_RECORD to leanBodyMassListProcessed,
+                        DataType.MENSTRUATION_FLOW_RECORD to menstruationFlowListProcessed,
+                        DataType.NUTRITION_RECORD to nutritionListProcessed,
+                        DataType.POWER_RECORD to powerListProcessed,
+                        DataType.RESPIRATORY_RATE_RECORD to respiratoryRateListProcessed,
+                        DataType.RESTING_HEART_RATE_RECORD to restingHeartRateListProcessed,
+                        DataType.SKIN_TEMPERATURE_RECORD to skinTemperatureListProcessed
+                    )
+                    configState?.let {
+                        // Individual progress bars
+                        exports.forEach { (type, dataList) ->
+                            if (dataList.isNotEmpty()) {
+                                val (completed, total) = exportProgressMap[type]
+                                    ?: (0 to dataList.size)
+                                var totalCompleted = exportProgressMap.values.sumOf { it.first }
+                                val totalTotal = exportProgressMap.values.sumOf { it.second }
+                                globalPercent =
+                                    if (totalTotal > 0) (totalCompleted * 100 / totalTotal) else 0
+                                globalPercent =
+                                    if (globalPercent < 100) (globalPercent + 1) else globalPercent
+                                exports.forEach { (_, dataList) ->
+                                    dataList.forEach { rec ->
+                                        rec.progress = globalPercent
+                                        rec.email = configState?.email.toString()
+                                    }
                                 }
-                            }
 
 
-                            if (exportProgressMap[type] == null) {
-                                exportHealthDataInBackground(dataList, type) { completed, total ->
-                                    exportProgressMap[type] = completed to total
+                                if (exportProgressMap[type] == null) {
+                                    exportHealthDataInBackground(
+                                        dataList,
+                                        type
+                                    ) { completed, total ->
+                                        exportProgressMap[type] = completed to total
+                                    }
                                 }
-                            }
 
-
-
-
-
-//
-//                            LaunchedEffect(globalPercent) {
-//                                // вы в IO-контексте, потому что execute() blocking
-//                                withContext(Dispatchers.IO) {
-//                                    sendProgressUpdate(globalPercent, GlobalConfig.config!!.email)
-//                                }
-//                            }
+                            
                                 sendProgressUpdateAsync(globalPercent, GlobalConfig.config!!.email)
 
 
 
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    Text(
+                                        text = type.typeName,
+                                        fontSize = 16.sp,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textAlign = TextAlign.Center
+                                    )
+                                    LinearProgressIndicator(
+                                        progress = if (total > 0) completed.toFloat() / total else 0f,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Text(
+                                        text = "Выгружено $completed из $total",
+                                        fontSize = 16.sp,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+
+                        // Общий прогресс всех типов
+                        if (exportProgressMap.isNotEmpty()) {
+                            val totalCompleted = exportProgressMap.values.sumOf { it.first }
+                            val totalTotal = exportProgressMap.values.sumOf { it.second }
+
+
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 Text(
-                                    text = type.typeName,
-                                    fontSize = 16.sp,
+                                    text = "Общий прогресс: $globalPercent%",
+                                    fontSize = 18.sp,
                                     modifier = Modifier.fillMaxWidth(),
                                     textAlign = TextAlign.Center
                                 )
                                 LinearProgressIndicator(
-                                    progress = if (total > 0) completed.toFloat() / total else 0f,
+//                                progress = if (totalTotal > 0) totalCompleted.toFloat() / totalTotal else 0f,
+                                    progress = globalPercent / 100f,
                                     modifier = Modifier.fillMaxWidth()
                                 )
                                 Text(
-                                    text = "Выгружено $completed из $total",
-                                    fontSize = 16.sp,
+                                    text = "Выгружено $totalCompleted из $totalTotal",
+                                    fontSize = 18.sp,
                                     modifier = Modifier.fillMaxWidth(),
                                     textAlign = TextAlign.Center
                                 )
@@ -847,59 +868,32 @@ fun AllInfoScreen(
                         }
                     }
 
-                    // Общий прогресс всех типов
-                    if (exportProgressMap.isNotEmpty()) {
-                        val totalCompleted = exportProgressMap.values.sumOf { it.first }
-                        val totalTotal = exportProgressMap.values.sumOf { it.second }
+                    if (configState != null) {
 
 
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            Text(
-                                text = "Общий прогресс: $globalPercent%",
-                                fontSize = 18.sp,
-                                modifier = Modifier.fillMaxWidth(),
-                                textAlign = TextAlign.Center
-                            )
-                            LinearProgressIndicator(
-//                                progress = if (totalTotal > 0) totalCompleted.toFloat() / totalTotal else 0f,
-                                progress = globalPercent / 100f, modifier = Modifier.fillMaxWidth()
-                            )
-                            Text(
-                                text = "Выгружено $totalCompleted из $totalTotal",
-                                fontSize = 18.sp,
-                                modifier = Modifier.fillMaxWidth(),
-                                textAlign = TextAlign.Center
-                            )
-                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OverlayProgress(
+                            completedJobs = completedJobs,
+                            totalJobs = totalJobs,
+                            isExportInProgress = exportProgressMap.isNotEmpty()
+                        )
+
+                        Text(
+                            text = "Внимание: для повторной выгрузки нужно перезапустить приложение и обновить QR-код в веб-приложении",
+                            fontSize = 14.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                        )
+
+
                     }
                 }
 
-                if (configState != null) {
 
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    OverlayProgress(
-                        completedJobs = completedJobs,
-                        totalJobs = totalJobs,
-                        isExportInProgress = exportProgressMap.isNotEmpty()
-                    )
-
-                    Text(
-                        text = "Внимание: для повторной выгрузки нужно перезапустить приложение и обновить QR-код в веб-приложении",
-                        fontSize = 14.sp,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                    )
-
-
-                }
             }
-
-
-        }
 
         }
 
@@ -1148,31 +1142,6 @@ private fun processImageProxy(
         }
     } else {
         imageProxy.close()
-    }
-}
-
-
-suspend fun sendProgressUpdate(progress: Int, email: String) {
-    val client = OkHttpClient()
-    val gson = Gson()
-    val jsonMediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
-    val payload = mapOf("progress" to progress.toString(), "email" to email)
-    val body = gson.toJson(payload).toRequestBody(jsonMediaType)
-
-    val url = "http://hse-coursework-health.ru/data-collection-api/api/v1/post_data/progress"
-        .toHttpUrlOrNull()!!
-
-    val req = Request.Builder()
-        .url(url)
-        .post(body)
-        .addHeader("accept", "application/json")
-        .addHeader("Content-Type", "application/json")
-        .build()
-
-    client.newCall(req).execute().use { resp ->
-        if (!resp.isSuccessful) {
-            Log.e("ProgressUpdate", "Failed: ${resp.code}")
-        }
     }
 }
 
