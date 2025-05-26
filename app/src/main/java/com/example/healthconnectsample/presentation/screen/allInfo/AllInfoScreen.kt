@@ -184,6 +184,15 @@ fun OverlayProgress(
                         "Считывание данных из Health Connect… $completedJobs из $totalJobs",
                         color = Color.White
                     )
+
+                    Text(
+                        text = "Внимание: на прогресс-барах пока могут отображаться не все данные (пока идет считывание из Health Connect).",
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                    )
                 }
             }
         }
@@ -858,13 +867,15 @@ fun AllInfoScreen(
                     )
 
                     Text(
-                        text = "Внимание: на прогресс-барах пока могут отображаться не все данные (пока идет считывание из Health Connect).",
+                        text = "Внимание: для повторной выгрузки нужно перезапустить приложение и обновить QR-код в веб-приложении",
                         fontSize = 14.sp,
                         textAlign = TextAlign.Center,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp)
                     )
+
+
                 }
             }
 
