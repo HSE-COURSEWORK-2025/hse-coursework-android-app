@@ -184,7 +184,7 @@ fun OverlayProgress(
                         "Считывание данных из Health Connect… $completedJobs из $totalJobs",
                         color = Color.White
                     )
-                } 
+                }
             }
         }
     }
