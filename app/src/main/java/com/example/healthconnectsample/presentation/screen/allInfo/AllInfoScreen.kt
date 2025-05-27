@@ -88,7 +88,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.ui.graphics.Color
-import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -97,7 +96,7 @@ import java.time.format.DateTimeFormatter
 
 // Определение enum для типов данных
 enum class DataType(val typeName: String) {
-    SLEEP_SESSION_DATA("SleepSessionData"), BLOOD_OXYGEN_DATA("BloodOxygenData"), HEART_RATE_RECORD(
+    SLEEP_SESSION_STAGES_DATA("SleepSessionStagesData"), SLEEP_SESSION_TIME_DATA("SleepSessionTimeData"), BLOOD_OXYGEN_DATA("BloodOxygenData"), HEART_RATE_RECORD(
         "HeartRateRecord"
     ),
     ACTIVE_CALORIES_BURNED_RECORD("ActiveCaloriesBurnedRecord"), BASAL_METABOLIC_RATE_RECORD("BasalMetabolicRateRecord"), BLOOD_PRESSURE_RECORD(
@@ -150,7 +149,7 @@ fun <T> exportHealthDataInBackground(
 }
 
 data class SampleRecord(
-    val value: String, val time: String, var progress: Number, var email: String
+    val value: String, val time: String, var email: String
 )
 
 @Composable
@@ -246,7 +245,8 @@ fun AllInfoScreen(
     val context = LocalContext.current
 
     // Lists of processed sample records
-    val sleepSessionsListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val sleepSessionsTimeListProcessed = remember { mutableStateListOf<SampleRecord>() }
+    val sleepSessionsStagesListProcessed = remember { mutableStateListOf<SampleRecord>() }
     val bloodOxygenListProcessed = remember { mutableStateListOf<SampleRecord>() }
     val heartRateListProcessed = remember { mutableStateListOf<SampleRecord>() }
     val activeCaloriesListProcessed = remember { mutableStateListOf<SampleRecord>() }
@@ -328,27 +328,47 @@ fun AllInfoScreen(
             skinTemperatureList
         ) {
             // Process each record type into SampleRecord lists with initial progress=0
-            sleepSessionsListProcessed.apply {
+
+            val gson = Gson()
+            sleepSessionsStagesListProcessed.apply {
+                clear()
+                sleepSessionsList.forEach { rec ->
+                    // Сериализуем весь массив stages в JSON
+                    val stagesJson: String = gson.toJson(rec.stages)
+
+                    add(
+                        SampleRecord(
+                            value    = stagesJson,
+                            time     = rec.startTime.toString(),
+                            
+                            email    = GlobalConfig.config?.email ?: ""
+                        )
+                    )
+                }
+            }
+
+            sleepSessionsTimeListProcessed.apply {
                 clear()
                 sleepSessionsList.forEach { rec ->
                     add(
                         SampleRecord(
-                            value = rec.duration.toString(),
-                            time = rec.startTime.toString(),
-                            progress = 0,
+                            value = rec.duration.toString(),           // здесь берём длительность сна
+                            time = rec.startTime.toString(),            // время начала сессии
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
                 }
             }
+
             bloodOxygenListProcessed.apply {
                 clear()
                 bloodOxygenList.forEach { rec ->
                     add(
                         SampleRecord(
-                            value = rec.value,
+                            value = rec.value.toString().replace(Regex("[^\\d.,]"), ""),
                             time = rec.startTime.toString(),
-                            progress = 0,
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
@@ -362,7 +382,7 @@ fun AllInfoScreen(
                             SampleRecord(
                                 value = sample.beatsPerMinute.toString(),
                                 time = sample.time.toString(),
-                                progress = 0,
+                                
                                 email = GlobalConfig.config?.email ?: ""
                             )
                         )
@@ -376,7 +396,7 @@ fun AllInfoScreen(
                         SampleRecord(
                             value = rec.energy.inKilocalories.toString(),
                             time = rec.startTime.toString(),
-                            progress = 0,
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
@@ -389,7 +409,7 @@ fun AllInfoScreen(
                         SampleRecord(
                             value = rec.basalMetabolicRate.toString(),
                             time = rec.time.toString(),
-                            progress = 0,
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
@@ -402,7 +422,7 @@ fun AllInfoScreen(
                         SampleRecord(
                             value = "${rec.systolic}/${rec.diastolic}",
                             time = rec.time.toString(),
-                            progress = 0,
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
@@ -415,7 +435,7 @@ fun AllInfoScreen(
                         SampleRecord(
                             value = rec.percentage.toString(),
                             time = rec.time.toString(),
-                            progress = 0,
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
@@ -428,7 +448,7 @@ fun AllInfoScreen(
                         SampleRecord(
                             value = rec.temperature.toString(),
                             time = rec.time.toString(),
-                            progress = 0,
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
@@ -441,7 +461,7 @@ fun AllInfoScreen(
                         SampleRecord(
                             value = rec.mass.inKilograms.toString(),
                             time = rec.time.toString(),
-                            progress = 0,
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
@@ -452,9 +472,9 @@ fun AllInfoScreen(
                 distanceList.forEach { rec ->
                     add(
                         SampleRecord(
-                            value = rec.distance.toString(),
+                            value = rec.distance.toString().replace(Regex("[^\\d.,]"), ""),
                             time = rec.startTime.toString(),
-                            progress = 0,
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
@@ -467,7 +487,7 @@ fun AllInfoScreen(
                         SampleRecord(
                             value = rec.title.toString(),
                             time = rec.startTime.toString(),
-                            progress = 0,
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
@@ -480,7 +500,7 @@ fun AllInfoScreen(
                         SampleRecord(
                             value = rec.volume.toString(),
                             time = rec.startTime.toString(),
-                            progress = 0,
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
@@ -489,16 +509,22 @@ fun AllInfoScreen(
             speedListProcessed.apply {
                 clear()
                 speedList.forEach { rec ->
-                    add(
-                        SampleRecord(
-                            value = rec.samples.toString(),
-                            time = rec.startTime.toString(),
-                            progress = 0,
-                            email = GlobalConfig.config?.email ?: ""
+                    rec.samples.forEach { sample ->
+                        val rawValue = sample.speed.toString()
+                        // Оставляем только цифры, точки и запятые
+                        val cleanedValue = rawValue.replace(Regex("[^\\d.,]"), "")
+                        add(
+                            SampleRecord(
+                                value = cleanedValue,                  // очищенное значение
+                                time = sample.time.toString(),         // время конкретного sample
+                                
+                                email = GlobalConfig.config?.email ?: ""
+                            )
                         )
-                    )
+                    }
                 }
             }
+
             stepsListProcessed.apply {
                 clear()
                 stepsList.forEach { rec ->
@@ -506,7 +532,7 @@ fun AllInfoScreen(
                         SampleRecord(
                             value = rec.count.toString(),
                             time = rec.startTime.toString(),
-                            progress = 0,
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
@@ -519,7 +545,7 @@ fun AllInfoScreen(
                         SampleRecord(
                             value = rec.energy.inKilocalories.toString(),
                             time = rec.startTime.toString(),
-                            progress = 0,
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
@@ -532,7 +558,7 @@ fun AllInfoScreen(
                         SampleRecord(
                             value = rec.weight.toString(),
                             time = rec.time.toString(),
-                            progress = 0,
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
@@ -545,7 +571,7 @@ fun AllInfoScreen(
                         SampleRecord(
                             value = rec.temperature.toString(),
                             time = rec.time.toString(),
-                            progress = 0,
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
@@ -558,7 +584,7 @@ fun AllInfoScreen(
                         SampleRecord(
                             value = rec.floors.toString(),
                             time = rec.startTime.toString(),
-                            progress = 0,
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
@@ -571,7 +597,7 @@ fun AllInfoScreen(
                         SampleRecord(
                             value = rec.zoneOffset.toString(),
                             time = rec.time.toString(),
-                            progress = 0,
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
@@ -584,7 +610,7 @@ fun AllInfoScreen(
                         SampleRecord(
                             value = rec.mass.toString(),
                             time = rec.time.toString(),
-                            progress = 0,
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
@@ -597,7 +623,7 @@ fun AllInfoScreen(
                         SampleRecord(
                             value = rec.flow.toString(),
                             time = rec.time.toString(),
-                            progress = 0,
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
@@ -610,7 +636,7 @@ fun AllInfoScreen(
                         SampleRecord(
                             value = rec.energy.toString(),
                             time = rec.startTime.toString(),
-                            progress = 0,
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
@@ -623,7 +649,7 @@ fun AllInfoScreen(
                         SampleRecord(
                             value = rec.samples.toString(),
                             time = rec.startTime.toString(),
-                            progress = 0,
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
@@ -636,7 +662,7 @@ fun AllInfoScreen(
                         SampleRecord(
                             value = rec.rate.toString(),
                             time = rec.time.toString(),
-                            progress = 0,
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
@@ -649,7 +675,7 @@ fun AllInfoScreen(
                         SampleRecord(
                             value = rec.beatsPerMinute.toString(),
                             time = rec.time.toString(),
-                            progress = 0,
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
@@ -662,7 +688,7 @@ fun AllInfoScreen(
                         SampleRecord(
                             value = rec.baseline?.inCelsius.toString(),
                             time = rec.startTime.toString(),
-                            progress = 0,
+                            
                             email = GlobalConfig.config?.email ?: ""
                         )
                     )
@@ -758,7 +784,8 @@ fun AllInfoScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     val exports = listOf(
-                        DataType.SLEEP_SESSION_DATA to sleepSessionsListProcessed,
+                        DataType.SLEEP_SESSION_STAGES_DATA to sleepSessionsStagesListProcessed,
+                        DataType.SLEEP_SESSION_TIME_DATA to sleepSessionsTimeListProcessed,
                         DataType.BLOOD_OXYGEN_DATA to bloodOxygenListProcessed,
                         DataType.HEART_RATE_RECORD to heartRateListProcessed,
                         DataType.ACTIVE_CALORIES_BURNED_RECORD to activeCaloriesListProcessed,
@@ -799,7 +826,6 @@ fun AllInfoScreen(
                                     if (globalPercent < 100) (globalPercent + 1) else globalPercent
                                 exports.forEach { (_, dataList) ->
                                     dataList.forEach { rec ->
-                                        rec.progress = globalPercent
                                         rec.email = configState?.email.toString()
                                     }
                                 }
@@ -1024,13 +1050,14 @@ suspend fun <T> exportDataInBatches(
     val total = dataList.size
     var completed = 0
     dataList.chunked(50).forEach { batch ->
+        val jsonString = gson.toJson(batch)
+        Log.e("jsonString", "${jsonString}")
         val requestBody = gson.toJson(batch).toRequestBody(jsonMediaType)
         val sentAt = OffsetDateTime.now(ZoneOffset.UTC)
             .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
 
         val url = "${config.post_here}/${dataType.typeName}".toHttpUrlOrNull()!!
             .newBuilder()
-            .addQueryParameter("sent_at", sentAt)
             .build()
 
         fun buildRequest(token: String) =

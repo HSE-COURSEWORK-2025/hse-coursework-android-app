@@ -123,64 +123,34 @@ class HealthConnectManager(private val context: Context) {
         var currentStart = startDate
 
         repeat((weeks + 1).toInt()) {
-            val currentEnd = currentStart.plusWeeks(1).let { if (it.isAfter(endDate)) endDate.plusDays(1) else it }
-            val request = ReadRecordsRequest(
-                recordType = recordType,
-                timeRangeFilter = TimeRangeFilter.between(
-                    currentStart.atStartOfDay(zone).toInstant(),
-                    currentEnd.atStartOfDay(zone).toInstant()
-                ),
-                ascendingOrder = false
-            )
+            val currentEnd = currentStart.plusWeeks(1)
+                .let { if (it.isAfter(endDate)) endDate.plusDays(1) else it }
+
             while (true) {
                 try {
-                    result += healthConnectClient.readRecords(request).records
+                    // Инлайн-запрос без лишних переменных
+                    result += healthConnectClient.readRecords(
+                        ReadRecordsRequest(
+                            recordType      = recordType,
+                            timeRangeFilter = TimeRangeFilter.between(
+                                currentStart.atStartOfDay(zone).toInstant(),
+                                currentEnd.atStartOfDay(zone).toInstant()
+                            ),
+                            ascendingOrder  = false
+                        )
+                    ).records
                     break
-                } catch (_: Exception) {}
+                } catch (_: Exception) {
+                    // Можно добавить логирование или delay здесь при необходимости
+                }
             }
+
             currentStart = currentStart.plusWeeks(1)
         }
         return result
     }
 
 
-    private val dataTypesToTrack: Set<KClass<out Record>> = setOf(
-        HeartRateRecord::class,
-        OxygenSaturationRecord::class,
-        SleepSessionRecord::class,
-        DistanceRecord::class,
-        StepsRecord::class,
-        TotalCaloriesBurnedRecord::class,
-        WeightRecord::class,
-        ActiveCaloriesBurnedRecord::class,
-        BasalMetabolicRateRecord::class,
-        BloodPressureRecord::class,
-        BodyFatRecord::class,
-        BoneMassRecord::class,
-        HydrationRecord::class,
-        SpeedRecord::class,
-        ExerciseSessionRecord::class,
-        BloodGlucoseRecord::class,
-        BasalBodyTemperatureRecord::class,
-        FloorsClimbedRecord::class,
-        CervicalMucusRecord::class,
-        LeanBodyMassRecord::class,
-        MenstruationFlowRecord::class,
-        NutritionRecord::class,
-        PlannedExerciseSessionRecord::class,
-        PowerRecord::class,
-        RespiratoryRateRecord::class,
-        RestingHeartRateRecord::class,
-        SkinTemperatureRecord::class,
-        Vo2MaxRecord::class,
-        WheelchairPushesRecord::class,
-        IntermenstrualBleedingRecord::class,
-        HeightRecord::class,
-        BodyWaterMassRecord::class,
-        HeartRateVariabilityRmssdRecord::class,
-        MenstruationPeriodRecord::class,
-        OvulationTestRecord::class
-    )
 
 
 
@@ -337,6 +307,10 @@ class HealthConnectManager(private val context: Context) {
 
 
 
+    suspend fun readWeightInputs(): List<WeightRecord> =
+        readRecordsByWeek(WeightRecord::class)
+
+
     suspend fun readExerciseSessions(): List<ExerciseSessionRecord> {
         val lastDay = ZonedDateTime.now()
             .minusDays(1)
@@ -355,42 +329,35 @@ class HealthConnectManager(private val context: Context) {
 
 
     suspend fun readSleepSessions(): List<SleepSessionData> {
-        val lastDay = ZonedDateTime.now()
-            .minusDays(1)
-            
-        val firstDay = lastDay
-            .minusDays(7)
+        // 1) Собираем все записи SleepSessionRecord с начала года до текущего дня
+        val sleepRecords: List<SleepSessionRecord> =
+            readRecordsByWeek(SleepSessionRecord::class)
 
-        val sessions = mutableListOf<SleepSessionData>()
-        val sleepSessionRequest = ReadRecordsRequest(
-            recordType = SleepSessionRecord::class,
-            timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant()),
-            ascendingOrder = false
-        )
-        val sleepSessions = healthConnectClient.readRecords(sleepSessionRequest)
-        sleepSessions.records.forEach { session ->
+        // 2) Маппим их в DTO, делая для каждой сессии агрегатный запрос по длительности
+        return sleepRecords.map { session ->
+            // фильтр по времени именно этой записи
             val sessionTimeFilter = TimeRangeFilter.between(session.startTime, session.endTime)
-            val durationAggregateRequest = AggregateRequest(
-                metrics = setOf(SleepSessionRecord.SLEEP_DURATION_TOTAL),
-                timeRangeFilter = sessionTimeFilter
-            )
-            val aggregateResponse = healthConnectClient.aggregate(durationAggregateRequest)
-            sessions.add(
-                SleepSessionData(
-                    uid = session.metadata.id,
-                    title = session.title,
-                    notes = session.notes,
-                    startTime = session.startTime,
-                    startZoneOffset = session.startZoneOffset,
-                    endTime = session.endTime,
-                    endZoneOffset = session.endZoneOffset,
-                    duration = aggregateResponse[SleepSessionRecord.SLEEP_DURATION_TOTAL],
-                    stages = session.stages
+
+            // агрегируем общую длительность сна в этой сессии
+            val aggregateResponse = healthConnectClient.aggregate(
+                AggregateRequest(
+                    metrics = setOf(SleepSessionRecord.SLEEP_DURATION_TOTAL),
+                    timeRangeFilter = sessionTimeFilter
                 )
             )
+            // строим DTO
+            SleepSessionData(
+                uid             = session.metadata.id,
+                title           = session.title,
+                notes           = session.notes,
+                startTime       = session.startTime,
+                startZoneOffset = session.startZoneOffset,
+                endTime         = session.endTime,
+                endZoneOffset   = session.endZoneOffset,
+                duration        = aggregateResponse[SleepSessionRecord.SLEEP_DURATION_TOTAL],
+                stages          = session.stages
+            )
         }
-
-        return sessions
     }
 
 
@@ -418,19 +385,6 @@ class HealthConnectManager(private val context: Context) {
 
 
 
-
-
-    suspend fun readWeightInputs(): List<WeightRecord> {
-        val lastDay = ZonedDateTime.now()
-        val firstDay = lastDay.minusDays(30)
-        val request = ReadRecordsRequest(
-            recordType = WeightRecord::class,
-            timeRangeFilter = TimeRangeFilter.between(firstDay.toInstant(), lastDay.toInstant())
-        )
-        val response = healthConnectClient.readRecords(request)
-
-        return response.records
-    }
 
 
 
