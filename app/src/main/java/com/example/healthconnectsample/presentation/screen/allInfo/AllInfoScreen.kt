@@ -16,7 +16,6 @@
 package com.example.healthconnectsample.presentation.screen.allInfo
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.util.Log
@@ -93,6 +92,13 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
 import java.time.format.DateTimeFormatter
+import kotlin.jvm.java
+import android.app.Activity
+import android.app.AlarmManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+
 
 // Определение enum для типов данных
 enum class DataType(val typeName: String) {
@@ -913,7 +919,6 @@ fun AllInfoScreen(
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp)
                         )
-
 
                     }
                 }
