@@ -516,7 +516,7 @@ fun AllInfoScreen(
                 clear()
                 speedList.forEach { rec ->
                     rec.samples.forEach { sample ->
-                        val rawValue = sample.speed.toString()
+                        val rawValue = sample.speed.inKilometersPerHour.toString()
                         // Оставляем только цифры, точки и запятые
                         val cleanedValue = rawValue.replace(Regex("[^\\d.,]"), "")
                         add(
@@ -531,6 +531,7 @@ fun AllInfoScreen(
                 }
             }
 
+
             stepsListProcessed.apply {
                 clear()
                 stepsList.forEach { rec ->
@@ -544,6 +545,7 @@ fun AllInfoScreen(
                     )
                 }
             }
+
             totalCaloriesBurnedListProcessed.apply {
                 clear()
                 totalCaloriesBurnedList.forEach { rec ->
@@ -1054,6 +1056,11 @@ suspend fun <T> exportDataInBatches(
     val client = OkHttpClient()
     val total = dataList.size
     var completed = 0
+
+    if (dataType.toString() == "SPEED_RECORD"){
+        Log.i("lmao", "lmao")
+    }
+
     dataList.chunked(50).forEach { batch ->
         val jsonString = gson.toJson(batch)
         Log.e("jsonString", "${jsonString}")
