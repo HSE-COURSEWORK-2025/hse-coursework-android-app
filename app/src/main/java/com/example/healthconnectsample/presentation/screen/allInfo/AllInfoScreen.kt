@@ -1057,10 +1057,7 @@ suspend fun <T> exportDataInBatches(
     val total = dataList.size
     var completed = 0
 
-    if (dataType.toString() == "SPEED_RECORD"){
-        Log.i("lmao", "lmao")
-    }
-
+ 
     dataList.chunked(50).forEach { batch ->
         val jsonString = gson.toJson(batch)
         Log.e("jsonString", "${jsonString}")
