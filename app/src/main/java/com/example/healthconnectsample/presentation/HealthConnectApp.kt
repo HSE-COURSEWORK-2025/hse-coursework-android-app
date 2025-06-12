@@ -41,7 +41,7 @@ import com.example.healthconnectsample.presentation.navigation.Screen
 import com.example.healthconnectsample.presentation.theme.HealthConnectTheme
 import kotlinx.coroutines.launch
 
-const val TAG = "Health Connect sample"
+const val TAG = "HSE Coursework Health App"
 
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable

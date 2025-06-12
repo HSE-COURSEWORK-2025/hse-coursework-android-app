@@ -1057,7 +1057,7 @@ suspend fun <T> exportDataInBatches(
     val total = dataList.size
     var completed = 0
 
- 
+
     dataList.chunked(50).forEach { batch ->
         val jsonString = gson.toJson(batch)
         Log.e("jsonString", "${jsonString}")

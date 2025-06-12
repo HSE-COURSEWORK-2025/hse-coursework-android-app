@@ -21,6 +21,6 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "Health Connect Sample"
+rootProject.name = "HSE Coursework Health App"
 include ':app'
 

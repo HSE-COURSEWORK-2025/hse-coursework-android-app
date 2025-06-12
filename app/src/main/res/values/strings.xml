@@ -14,7 +14,7 @@
   ~ limitations under the License.
   -->
 <resources>
-    <string name="app_name">Health Connect Sample</string>
+    <string name="app_name">HSE Coursework Health App</string>
     <string name="menu">menu</string>
 
     <!-- Screen titles -->
