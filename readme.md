@@ -1,6 +1,6 @@
 # HSE Coursework: приложение для Android
 
-Это Android-приложение для взаимодействия с платформой Google Health Connect. Приложение позволяет собирать данные о здоровье пользователя и отправлять их наш ([сервис сбора данных](https://github.com/HSE-COURSEWORK-2025/hse-coursework-backend-data-collection-service)).
+Это Android-приложение для взаимодействия с платформой Google Health Connect. Приложение позволяет собирать данные о здоровье пользователя и отправлять их наш [сервис сбора данных](https://github.com/HSE-COURSEWORK-2025/hse-coursework-backend-data-collection-service).
 
 ## Основные возможности
 - Чтение различных типов данных о здоровье через Health Connect
