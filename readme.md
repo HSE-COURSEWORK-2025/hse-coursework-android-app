@@ -2,9 +2,9 @@
 
 Это Android-приложение для взаимодействия с платформой Google Health Connect. Приложение позволяет собирать данные о здоровье пользователя и отправлять их наш [сервис сбора данных](https://github.com/HSE-COURSEWORK-2025/hse-coursework-backend-data-collection-service).
 
-<div style="text-align:center">
+<p align="center">
   <img src="https://github.com/HSE-COURSEWORK-2025/hse-coursework-android-app/blob/master/android_demo.gif" width="300" alt="Демонстрация работы приложения"/>
-</div>
+</p>
 
 ## Основные возможности
 - Чтение различных типов данных о здоровье через Health Connect
